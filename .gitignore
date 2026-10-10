@@ -1,0 +1,32 @@
+# Gradle / build output
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+app/release/
+app/debug/
+
+# Local config — machine specific, never commit
+local.properties
+keystore.properties
+*.jks
+*.keystore
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.kotlin/
+captures/
+.cxx/
+
+# Python scraper; OSM extracts and raw Overpass dumps are big and rebuilt on demand
+__pycache__/
+scraper/.venv/
+*.pyc
+*.osm.pbf
+raw*.json
+
+# OS junk
+.DS_Store
+Thumbs.db
