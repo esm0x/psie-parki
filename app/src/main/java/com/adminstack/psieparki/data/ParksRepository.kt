@@ -6,11 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.File
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 data class ParksState(
     val parks: List<Park> = emptyList(),
@@ -28,12 +24,12 @@ data class ParksState(
  * file in the GitHub repo that a weekly job rebuilds from OSM, so the app downloads it
  * at most once a day and works offline in between.
  */
-class ParksRepository(
-    private val context: Context,
-    private val url: String = DATA_URL,
-    private val client: OkHttpClient = defaultClient,
-) {
-    private val cache = File(context.filesDir, "parks.json")
+class ParksRepository(context: Context, url: String = DATA_URL) {
+    private val file = JsonCache(
+        context, SEED, url,
+        parse = { parksJson.decodeFromString(ParksFile.serializer(), it).sanitized() },
+        isPlausible = { it.parks.size >= MIN_PARKS },
+    )
     private val _state = MutableStateFlow(ParksState())
     val state: StateFlow<ParksState> = _state.asStateFlow()
 
@@ -42,23 +38,18 @@ class ParksRepository(
     /** Shows whatever is stored, then fetches a newer file if the stored one is a day old. */
     suspend fun load(force: Boolean = false) {
         if (_state.value.parks.isEmpty()) {
-            val local = withContext(Dispatchers.IO) { readLocal() }
-            _state.value = ParksState(
-                parks = local?.parks.orEmpty(),
-                osmBase = local?.osm_base,
-                loading = local == null,
-            )
+            val local = withContext(Dispatchers.IO) { file.readLocal() }
+            _state.value = ParksState(parks = local?.parks.orEmpty(), osmBase = local?.osm_base, loading = local == null)
         }
-        val stale = !cache.exists() || System.currentTimeMillis() - cache.lastModified() > MAX_AGE_MS
-        if (force || stale) refresh()
+        if (force || file.isStale) refresh()
         _state.value = _state.value.copy(loading = false)
     }
 
     private suspend fun refresh() {
         _state.value = _state.value.copy(refreshing = true)
-        val result = withContext(Dispatchers.IO) { runCatching { download() } }
-        result.onSuccess { file ->
-            _state.value = ParksState(parks = file.parks, osmBase = file.osm_base, loading = false)
+        val result = withContext(Dispatchers.IO) { runCatching { file.download() } }
+        result.onSuccess { f ->
+            _state.value = ParksState(parks = f.parks, osmBase = f.osm_base, loading = false)
         }.onFailure { e ->
             _state.value = _state.value.copy(
                 refreshing = false,
@@ -72,46 +63,35 @@ class ParksRepository(
         }
     }
 
-    private fun download(): ParksFile {
-        val request = Request.Builder().url(url).header("User-Agent", "PsieParki-Android").build()
-        val body = client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-            response.body?.string() ?: throw IOException("empty body")
-        }
-        val file = parksJson.decodeFromString(ParksFile.serializer(), body)
-        // A truncated or emptied file must not wipe a good cache: the scraper refuses to
-        // write one, but a proxy or a half-finished push could still serve it.
-        if (file.parks.size < MIN_PARKS) throw IOException("only ${file.parks.size} parks")
-        val tmp = File(cache.parentFile, "parks.json.tmp")
-        tmp.writeText(body)
-        if (!tmp.renameTo(cache)) {
-            cache.delete()
-            tmp.renameTo(cache)
-        }
-        return file
-    }
-
-    private fun readLocal(): ParksFile? {
-        val fromCache = runCatching {
-            if (cache.exists()) parksJson.decodeFromString(ParksFile.serializer(), cache.readText()) else null
-        }.getOrNull()
-        if (fromCache != null && fromCache.parks.isNotEmpty()) return fromCache
-        return runCatching {
-            context.assets.open(SEED).bufferedReader().use {
-                parksJson.decodeFromString(ParksFile.serializer(), it.readText())
-            }
-        }.getOrNull()
-    }
-
     companion object {
         const val DATA_URL = "https://raw.githubusercontent.com/esm0x/psie-parki/main/data/parks.json"
         const val SEED = "parks.json"
-        private const val MAX_AGE_MS = 24 * 3600 * 1000L
         private const val MIN_PARKS = 100
-
-        private val defaultClient = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .build()
     }
 }
+
+/**
+ * What survives from a file nobody vouches for: parks with coordinates on Earth and
+ * unique ids, text cut to sane lengths. The scraper's contract guarantees all this for
+ * the real file; this is for the file someone else might serve.
+ */
+fun ParksFile.sanitized(): ParksFile {
+    fun String?.cut(n: Int) = this?.take(n)
+    val seen = HashSet<String>()
+    val clean = parks.asSequence()
+        .filter { it.lat in -90.0..90.0 && it.lon in -180.0..180.0 && it.id.length <= 80 && seen.add(it.id) }
+        .take(MAX_ITEMS)
+        .map {
+            it.copy(
+                name = it.name.cut(120), locality = it.locality.cut(80), district = it.district.cut(80),
+                region = it.region.cut(40), surface = it.surface.cut(80), openingHours = it.openingHours.cut(200),
+                operator = it.operator.cut(120), description = it.description.cut(300), note = it.note.cut(300),
+                website = it.website?.takeIf { w -> w.length <= 300 && (w.startsWith("https://") || w.startsWith("http://")) },
+            )
+        }
+        .toList()
+    return copy(parks = clean)
+}
+
+/** Far beyond any real count; a file with more is an attack on memory, not a list. */
+const val MAX_ITEMS = 50_000

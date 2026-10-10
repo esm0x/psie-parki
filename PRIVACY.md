@@ -19,15 +19,17 @@ położenie telefonu z systemu Android, żeby policzyć odległość do wybiegó
 opuszcza urządzenia i nie jest przechowywana. Możesz w każdej chwili cofnąć zgodę
 w ustawieniach Androida; aplikacja działa wtedy po wyborze miejscowości.
 
-Wybraną miejscowość i włączone filtry aplikacja zapamiętuje lokalnie na telefonie.
+Wybraną miejscowość, włączone filtry i ulubione wybiegi aplikacja zapamiętuje lokalnie
+na telefonie.
 Odinstalowanie aplikacji usuwa je.
 
 ## Połączenia z internetem
 
 Aplikacja łączy się z:
 
-- **raw.githubusercontent.com** (GitHub) — pobiera listę wybiegów, raz na dobę. Zapytanie
-  nie zawiera żadnych danych o Tobie ani o Twojej lokalizacji.
+- **raw.githubusercontent.com** (GitHub) — pobiera listę wybiegów oraz weterynarzy
+  i schronisk, raz na dobę. Zapytanie nie zawiera żadnych danych o Tobie ani o Twojej
+  lokalizacji.
 - **serwer zgłoszeń** (Cloudflare Workers) — tylko gdy coś zgłaszasz; opis niżej.
 - **tiles.openfreemap.org** (OpenFreeMap) — pobiera podkład mapy dla oglądanego fragmentu,
   gdy otworzysz zakładkę Mapa. Jak każdy serwer, widzi adres IP i fragment mapy, o który
@@ -43,7 +45,7 @@ Workers) tylko to, co dotyczy wybiegu:
 
 - rodzaj zgłoszenia i identyfikator wybiegu albo wskazane przez Ciebie na mapie miejsce
   wybiegu (to miejsce wybiegu, nie Twoja lokalizacja),
-- nazwę, cechy (ogrodzenie, oświetlenie…) i uwagi, jeśli je wpiszesz,
+- nazwę i cechy (ogrodzenie, oświetlenie…), jeśli je podasz,
 - losowy identyfikator instalacji aplikacji i jej wersję.
 
 Serwer nie zapisuje adresu IP ani identyfikatora instalacji. Zamienia identyfikator
@@ -52,17 +54,23 @@ skróty (HMAC z tajnym kluczem). Po skrótach da się odróżnić dwie osoby pot
 sam wybieg, ale nie da się ustalić, kim są ani skąd piszą. Skróty trafiają do zgłoszenia;
 liczniki dziennych limitów zgłoszeń wygasają po dwóch dniach.
 
-Nazwę i uwagi przed zapisaniem ocenia model językowy Claude firmy Anthropic, żeby odsiać
-spam, reklamy, wulgaryzmy i dane osobowe. Anthropic przetwarza ten tekst jako nasz
-dostawca usługi, na swoich warunkach dla API. Treść odrzucona nie jest nigdzie
-publikowana.
+Nazwę przed zapisaniem sprawdza automatyczny filtr na naszym serwerze (bez udziału
+ludzi ani zewnętrznych usług), żeby odsiać reklamy, wulgaryzmy i dane kontaktowe. Nazwa
+odrzucona nie jest nigdzie zapisywana ani publikowana.
 
 Przyjęte zgłoszenie staje się **publicznym** wpisem (issue) w repozytorium
-github.com/esm0x/psie-parki — razem z miejscem wybiegu, nazwą, cechami, uwagami
+github.com/esm0x/psie-parki — razem z miejscem wybiegu, nazwą, cechami
 i skrótami opisanymi wyżej. Z tego repozytorium powstaje lista wybiegów w aplikacji.
-Nie wpisuj więc w uwagach niczego, czego nie chcesz publikować.
+Nie wpisuj więc w nazwie niczego, czego nie chcesz publikować.
 
 Status Twoich zgłoszeń aplikacja zapamiętuje na telefonie (Więcej → Moje zgłoszenia).
+
+## Weterynarze, telefon i udostępnianie
+
+„Zadzwoń” otwiera systemową aplikację telefonu z wpisanym numerem — dzwonisz sam,
+aplikacja nie łączy rozmów i nie widzi ich. „Prowadź” przekazuje współrzędne miejsca
+Twojej aplikacji z mapami, a „Udostępnij” — nazwę i link do mapy wybranej przez Ciebie
+aplikacji. Nic z tego nie trafia do nas.
 
 ## Zgłoszenia mailem
 

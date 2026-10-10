@@ -34,6 +34,10 @@ class Settings(context: Context) {
             .toSet()
         set(value) = prefs.edit { putStringSet(KEY_FEATURES, value.map { it.name }.toSet()) }
 
+    var favourites: Set<String>
+        get() = prefs.getStringSet(KEY_FAVOURITES, emptySet()).orEmpty().toSet()
+        set(value) = prefs.edit { putStringSet(KEY_FAVOURITES, value) }
+
     /** The "Psie Parki tworzą psiarze" card on the list, once closed, stays closed. */
     var inviteDismissed: Boolean
         get() = prefs.getBoolean(KEY_INVITE, false)
@@ -41,6 +45,7 @@ class Settings(context: Context) {
 
     private companion object {
         const val KEY_INVITE = "invite_dismissed"
+        const val KEY_FAVOURITES = "favourites"
         const val KEY_PLACE = "place"
         const val KEY_LAT = "place_lat"
         const val KEY_LON = "place_lon"

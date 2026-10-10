@@ -1,4 +1,5 @@
 """The same answer the Overpass query gives, built from OSM extract files instead.
+(Parks, plus the vets and shelters the app lists next to them.)
 
     python scraper/pbf.py extracts/*.osm.pbf -o raw.json
     python scraper/build.py --raw raw.json
@@ -30,7 +31,8 @@ LEVELS = {"4": "wojewodztwo", "7": "gmina", "8": "miejscowosc", "9": "dzielnica"
 
 
 def is_park(tags: osmium.osm.TagList) -> bool:
-    return tags.get("leisure") == "dog_park"
+    """Everything the app lists: dog parks, and vets and shelters for the "Weterynarz" tab."""
+    return tags.get("leisure") == "dog_park" or tags.get("amenity") in ("veterinary", "animal_shelter")
 
 
 def is_admin(tags: osmium.osm.TagList) -> bool:
@@ -43,8 +45,8 @@ def read(path: Path, parks: dict[str, dict[str, Any]], admin: list[tuple[str, st
     fp = (
         osmium.FileProcessor(str(path))
         .with_locations()
-        .with_areas(osmium.filter.KeyFilter("leisure", "boundary"))
-        .with_filter(osmium.filter.KeyFilter("leisure", "boundary"))
+        .with_areas(osmium.filter.KeyFilter("leisure", "boundary", "amenity"))
+        .with_filter(osmium.filter.KeyFilter("leisure", "boundary", "amenity"))
     )
     for obj in fp:
         tags = obj.tags

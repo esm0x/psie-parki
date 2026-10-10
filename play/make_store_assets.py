@@ -42,7 +42,8 @@ CAPTIONS = {
     "05-miejscowosci": ("Bez udostępniania lokalizacji", "wystarczy wybrać miejscowość"),
     "04-miejscowosci": ("Bez udostępniania lokalizacji", "wystarczy wybrać miejscowość"),
     "06-dodaj-wybieg": ("Znasz wybieg? Dodaj go", "w minutę, bez zakładania konta"),
-    "07-ciemny-motyw": ("Jasny i ciemny motyw", "bez reklam i bez zbierania danych"),
+    "07-weterynarz": ("Weterynarz w pobliżu", "kto ma otwarte teraz, telefon jednym dotknięciem"),
+    "08-ciemny-motyw": ("Jasny i ciemny motyw", "bez reklam i bez zbierania danych"),
 }
 
 SETS = {  # raw dir → (output dir, canvas, allowed side range)

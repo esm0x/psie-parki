@@ -21,7 +21,7 @@ Wybiegi dla psów w całej Polsce: najbliższe, na mapie. Dodaj swój. Bez rekla
 
 ## Pełny opis (max 4000 znaków) — `opis-pelny.txt`
 
-2352 znaków. Zawiera zdanie o niezależności od urzędów i atrybucję OpenStreetMap
+2882 znaków. Zawiera zdanie o niezależności od urzędów i atrybucję OpenStreetMap
 (licencja ODbL jej wymaga) — **nie usuwaj ich**.
 
 ## Kategoria i kontakt
@@ -35,8 +35,9 @@ Wybiegi dla psów w całej Polsce: najbliższe, na mapie. Dodaj swój. Bez rekla
 
 ```
 Pierwsze wydanie. Wybiegi dla psów w całej Polsce: lista od najbliższego, mapa,
-szczegóły (ogrodzenie, oświetlenie, woda, agility), filtry, wybór miejscowości bez
-udostępniania lokalizacji. Dodawanie i potwierdzanie wybiegów. Jasny i ciemny motyw.
+szczegóły (ogrodzenie, oświetlenie, woda, agility), filtry, ulubione, udostępnianie.
+Najbliższy weterynarz (otwarte teraz, całodobowe) i schroniska. Dodawanie
+i potwierdzanie wybiegów. Jasny i ciemny motyw.
 ```
 
 ## Grafiki
@@ -59,7 +60,8 @@ w wynikach wyszukiwania):
 4. `04-filtry.png` — Tylko ogrodzone?
 5. `05-miejscowosci.png` — Bez udostępniania lokalizacji
 6. `06-dodaj-wybieg.png` — Znasz wybieg? Dodaj go
-7. `07-ciemny-motyw.png` — Jasny i ciemny motyw
+7. `07-weterynarz.png` — Weterynarz w pobliżu
+8. `08-ciemny-motyw.png` — Jasny i ciemny motyw
 
 **Tablet 7"** — `screenshots/tablet-7/`, 1080 × 1920. **Tablet 10"** — `screenshots/tablet-10/`,
 1440 × 2560. Po cztery: najbliższe, mapa, szczegóły, miejscowości.

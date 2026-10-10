@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import com.adminstack.psieparki.data.Feature
+import com.adminstack.psieparki.data.HelpersFile
 import com.adminstack.psieparki.data.LatLon
 import com.adminstack.psieparki.data.ParkQuery
 import com.adminstack.psieparki.data.ParksFile
@@ -18,6 +19,7 @@ import com.adminstack.psieparki.data.distanceFrom
 import com.adminstack.psieparki.data.localities
 import com.adminstack.psieparki.data.parksJson
 import com.adminstack.psieparki.data.rank
+import com.adminstack.psieparki.data.sanitized
 import com.adminstack.psieparki.ui.theme.PsieParkiTheme
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Assume.assumeTrue
@@ -28,6 +30,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
+import java.time.LocalDateTime
 
 /**
  * The raw screenshots for the Play listing, rendered from the real screens and the real
@@ -48,6 +51,7 @@ class StoreScreenshots {
     private val root = File(System.getProperty("screenshots.dir") ?: "build/screenshots")
     private val repo = generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "data/parks.json").exists() }
     private val parks = parksJson.decodeFromString(ParksFile.serializer(), File(repo, "data/parks.json").readText())
+    private val vets = parksJson.decodeFromString(HelpersFile.serializer(), File(repo, "data/vets.json").readText()).sanitized()
 
     // Rybnik's market square: where the app comes from, and a city with a few parks.
     private val here = LatLon(50.0971, 18.5418)
@@ -88,7 +92,11 @@ class StoreScreenshots {
         shot(phone, "06-dodaj-wybieg") {
             AddParkScreen(LatLon(50.0889, 18.5310), "Okolice: Rybnik", { _, _ -> SendResult.Failed("") }, {}, {})
         }
-        shot(phone, "07-ciemny-motyw", dark = true) { ListScreen(listUi(), ListActions(), inviteDismissed = true) }
+        // A Monday morning, so "otwarte teraz" reads the same on every run.
+        shot(phone, "07-weterynarz") {
+            HelpersScreen(vets.places, here, "Twoja lokalizacja", HelperActions(), now = LocalDateTime.of(2026, 10, 12, 10, 0))
+        }
+        shot(phone, "08-ciemny-motyw", dark = true) { ListScreen(listUi(), ListActions(), inviteDismissed = true) }
     }
 
     @Test

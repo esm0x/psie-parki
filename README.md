@@ -2,9 +2,14 @@
 
 Aplikacja na Androida, która pokazuje najbliższe wybiegi dla psów: listę od
 najbliższego, mapę i szczegóły (ogrodzenie, oświetlenie, woda, agility, część dla
-małych psów). Użytkownicy dodają i potwierdzają wybiegi, a automatyczna moderacja
-(z Claude) pilnuje, żeby nie trafiło tam byle co. Bez reklam i kont. Lokalizacja
-nie opuszcza telefonu.
+małych psów). Do tego najbliższy weterynarz z godzinami otwarcia („otwarte teraz”,
+„całodobowo”, telefon jednym dotknięciem) i schroniska, ulubione wybiegi
+i udostępnianie. Użytkownicy dodają i potwierdzają wybiegi, a automatyczna moderacja
+(zwykły kod, bez AI i bez opłat) pilnuje, żeby nie trafiło tam byle co. Bez reklam
+i kont. Lokalizacja nie opuszcza telefonu.
+
+**Koszt utrzymania: 0 zł.** Dane z OpenStreetMap, kafelki z OpenFreeMap, zgłoszenia
+przez darmowy plan Cloudflare Workers, moderacja w GitHub Actions publicznego repo.
 
 | | |
 |---|---|
@@ -12,6 +17,7 @@ nie opuszcza telefonu.
 | `applicationId` | `com.adminstack.psieparki` (**nieodwracalny** po pierwszej publikacji) |
 | Wersja | 1.0.0 (versionCode 1), niewydana |
 | Dane | OpenStreetMap (`leisure=dog_park`), co tydzień + zgłoszenia z aplikacji, co 30 min + ręczne poprawki |
+| Weterynarze, schroniska | OpenStreetMap (`amenity=veterinary`, `amenity=animal_shelter`), co tydzień → `data/vets.json` |
 | Zgłoszenia | Cloudflare Worker (`worker/`) → issue → `moderacja.yml`; opis i uruchomienie: **[MODERACJA.md](MODERACJA.md)** |
 | Mapa | MapLibre + kafelki OpenFreeMap (bez klucza API, bez limitów) |
 
@@ -19,6 +25,7 @@ nie opuszcza telefonu.
 
 ```
 scraper/build.py          OSM → data/osm-parks.json → + zgłoszenia + poprawki → data/parks.json
+                          OSM → data/vets.json (weterynarze i schroniska)
 scraper/zgloszenia.py     reguły zgłoszeń: duplikaty, potwierdzenia od innych osób, głosy na cechy
 scraper/moderuj.py        workflow moderacji: issues → decyzje → dane → komentarze
 scraper/pbf.py            to samo z pliku .osm.pbf, gdy Overpass leży
@@ -27,9 +34,9 @@ scraper/manual.py         nakłada manual/poprawki.json
 scraper/CONTRACT.md       format data/parks.json — wiążący dla apki
 manual/poprawki.json      ręczne poprawki, ukryte i dodane wybiegi (edytuje człowiek, wygrywa)
 manual/zgloszenia.json    stan zgłoszeń z aplikacji (pisze tylko workflow moderacji)
-worker/                   Cloudflare Worker: przyjmuje zgłoszenia, limity, moderacja tekstu (Claude)
+worker/                   Cloudflare Worker: przyjmuje zgłoszenia, limity, filtr nazw (src/filter.ts)
 data/parks.json           wynik; apka pobiera go z raw.githubusercontent.com raz na dobę
-                          i ma jego kopię w APK na pierwsze uruchomienie
+data/vets.json            i ma kopie obu plików w APK na pierwsze uruchomienie
 
 app/                      Kotlin + Compose, pakiet com.adminstack.psieparki
 play/                     opisy, grafiki i zrzuty do Sklepu Play, skrypty, które je robią
@@ -45,7 +52,7 @@ python scraper/pbf.py poland.osm.pbf -o raw.json # gdy Overpass nie odpowiada
 python scraper/build.py --raw raw.json
 python -m unittest discover -s scraper/tests -t scraper
 
-./gradlew testDebugUnitTest                      # testy (czytają też prawdziwy data/parks.json)
+./gradlew testDebugUnitTest                      # testy, w tym małpa (niżej); czytają prawdziwe dane
 ./gradlew assembleDebug
 ./gradlew bundleRelease                          # AAB do sklepu, podpis z keystore.properties
 ```
@@ -57,6 +64,24 @@ apkę i workera przy każdym PR.
 
 Worker: `cd worker && npm ci && npm run check && npm test`. Bez wdrożonego workera
 (`-PzgloszeniaUrl` niepodane) aplikacja dodaje wybiegi mailem, jak w 1.0.
+
+### Testy odporności
+
+- **Małpa w Compose** (`ui/ComposeMonkeyTest.kt`, Robolectric): 5 × 800 losowych akcji —
+  dotknięcia wszystkiego, co klikalne, wrogi tekst w każdym polu (5000 znaków, zalgo,
+  odwracanie kierunku, emoji, `<script>`), wstecz, obroty, tryb ciemny. Test sprawdza też,
+  że małpa obeszła co najmniej 5 ekranów. Mapa (natywny MapLibre) jest pominięta —
+  ją sprawdza emulator.
+- **Wrogie dane** (`data/HardeningTest.kt`): plik z 5000-znakową nazwą, `javascript:`
+  w adresie strony, zdublowane id, współrzędne 1e308, NaN, zły typ — apka bierze to,
+  co bezpieczne, albo odrzuca cały plik i zostaje przy poprzedniej kopii. Pobieranie
+  ograniczone do 8 MB, zapis atomowy.
+- **Worker** (`worker/test/`): dziesiątki sposobów na przemycenie wulgaryzmu, reklamy
+  i kontaktu (cyrylica, leet, rozstrzelone litery, niewidoczne znaki), zalgo, znaki
+  sterujące, podrobiona wersja i identyfikator instalacji, IPv6 z jednego domu.
+- **Moderacja** (`scraper/tests/`): wymyślone identyfikatory z jednej sieci, zalew
+  z wielu sieci, trolle kasujące wybiegi z OSM, ponowne wypełnianie ukrytego miejsca,
+  issue z dopisanym drugim blokiem JSON.
 
 ### Emulator
 
@@ -87,6 +112,9 @@ moderację — bez Twojego udziału ([MODERACJA.md](MODERACJA.md)). Mailem przyc
 
 ## Rzeczy, o których trzeba pamiętać
 
+- **Weterynarze: godziny z OSM, nie z gabinetu.** Parser rozumie typowy zapis
+  (`Mo-Fr 08:00-20:00; Sa 09:00-14:00`, `24/7`); czego nie rozumie, pokazuje surowo,
+  zamiast zgadywać „otwarte”. Ekran mówi wprost: w nagłym wypadku zadzwoń przed wyjazdem.
 - **Danych jest mało.** W październiku 2026 OSM miał w Polsce 618 publicznych wybiegów:
   sporo w dużych miastach (Warszawa 46, Gdańsk 43, Kraków 40), prawie nic na wsi. Cechy
   są opisane rzadko (ogrodzenie: 262, woda: 0). Dlatego apka mówi „brak danych”, a nie

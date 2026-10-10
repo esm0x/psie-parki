@@ -62,3 +62,35 @@ def check(doc: dict[str, Any]) -> list[str]:
         if p.get("website") and not p["website"].startswith(("https://", "http://")):
             problems.append(f"{where}: website must be an http(s) URL")
     return problems
+
+
+HELPER_KINDS = {"weterynarz", "schronisko"}
+HELPER_STR = ["name", "locality", "district", "region", "address", "phone", "website", "openingHours"]
+
+
+def check_helpers(doc: dict[str, Any]) -> list[str]:
+    """data/vets.json: vets and shelters for the "Weterynarz" tab."""
+    problems: list[str] = []
+    places = doc.get("places") or []
+    if doc.get("count") != len(places):
+        problems.append(f"count {doc.get('count')} != {len(places)} places")
+    ids = set()
+    for i, p in enumerate(places):
+        where = p.get("id", f"#{i}")
+        if not isinstance(p.get("id"), str) or not re.match(r"^(node|way|relation)/\d+$", p["id"]) or p["id"] in ids:
+            problems.append(f"{where}: bad or duplicate id")
+        ids.add(p.get("id"))
+        if p.get("kind") not in HELPER_KINDS:
+            problems.append(f"{where}: kind must be one of {sorted(HELPER_KINDS)}")
+        for k, (lo, hi) in (("lat", LAT), ("lon", LON)):
+            v = p.get(k)
+            if not isinstance(v, (int, float)) or isinstance(v, bool) or not lo <= v <= hi:
+                problems.append(f"{where}: {k} must be a number in Poland")
+        for k in HELPER_STR:
+            if k not in p or (p[k] is not None and not isinstance(p[k], str)):
+                problems.append(f"{where}: {k} must be a string or null")
+        if not isinstance(p.get("allDay"), bool):
+            problems.append(f"{where}: allDay must be true or false")
+        if p.get("website") and not p["website"].startswith(("https://", "http://")):
+            problems.append(f"{where}: website must be an http(s) URL")
+    return problems

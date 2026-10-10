@@ -34,13 +34,14 @@ data class Submission(
     val lon: Double? = null,
     val name: String? = null,
     val features: Map<Feature, Boolean> = emptyMap(),
-    val comment: String? = null,
 )
 
 /** A submission this phone sent, kept so "Moje zgłoszenia" can show what became of it. */
 @Serializable
 data class SentSubmission(
     val nr: Int,
+    /** Proof to the worker that this phone sent it; without it the status stays private. */
+    val token: String = "",
     val title: String,
     val sentOn: String,
     /** "oczekuje", "przyjete", "niepotwierdzone", "odrzucone". */
@@ -107,7 +108,6 @@ class Submissions(
             s.lat?.let { put("lat", it) }
             s.lon?.let { put("lon", it) }
             s.name?.takeIf { it.isNotBlank() }?.let { put("nazwa", it.trim()) }
-            s.comment?.takeIf { it.isNotBlank() }?.let { put("komentarz", it.trim()) }
             put("cechy", JsonObject(s.features.map { (f, v) -> f.wire to JsonPrimitive(v) }.toMap()))
             put("instalacja", installId)
             put("wersja", appVersion)
@@ -124,7 +124,8 @@ class Submissions(
                     r.code == 201 -> {
                         val nr = json?.get("nr")?.jsonPrimitive?.content?.toIntOrNull()
                             ?: return@use SendResult.Failed("Nieczytelna odpowiedź serwera.")
-                        remember(SentSubmission(nr, title, LocalDate.now().toString()))
+                        val token = json["token"]?.jsonPrimitive?.content.orEmpty().take(64)
+                        remember(SentSubmission(nr, token, title.take(80), LocalDate.now().toString()))
                         s.parkId?.let { pid ->
                             when (s.type) {
                                 SubmissionType.CONFIRM, SubmissionType.GONE -> markAnswered(pid, ANSWER_EXISTS)
@@ -148,14 +149,14 @@ class Submissions(
     suspend fun refreshStatuses() = withContext(Dispatchers.IO) {
         if (!enabled) return@withContext
         val updated = _sent.value.map { s ->
-            if (s.status != "oczekuje") return@map s
+            if (s.status != "oczekuje" || s.token.isEmpty()) return@map s
             runCatching {
-                val request = Request.Builder().url(endpoint.trimEnd('/') + "/zgloszenie/${s.nr}").build()
+                val request = Request.Builder().url(endpoint.trimEnd('/') + "/zgloszenie/${s.nr}?t=${s.token}").build()
                 client.newCall(request).execute().use { r ->
                     if (!r.isSuccessful) return@use s
                     val json = parksJson.parseToJsonElement(r.body?.string().orEmpty()).jsonObject
                     s.copy(
-                        status = json["status"]?.jsonPrimitive?.content ?: s.status,
+                        status = json["status"]?.jsonPrimitive?.content?.takeIf { it in STATUSES } ?: s.status,
                         reason = json["powod"]?.takeIf { it is JsonPrimitive && it.isString }?.jsonPrimitive?.content,
                     )
                 }
@@ -176,6 +177,8 @@ class Submissions(
     }.getOrDefault(emptyList())
 
     companion object {
+        private val STATUSES = setOf("oczekuje", "przyjete", "niepotwierdzone", "odrzucone")
+
         /** Marker in [answered] for "this phone already said whether the park exists". */
         const val ANSWER_EXISTS = "istnieje"
         private const val KEY_INSTALL = "install_id"

@@ -65,3 +65,40 @@ i plik **nie** jest zapisywany.
 `generated_at`/`failures`). `data/parks.json` = OSM → `manual/zgloszenia.json`
 (zgłoszenia z aplikacji po moderacji, zapisuje je tylko workflow) → `manual/poprawki.json`
 (ręczne, wygrywają). `python scraper/build.py --offline` przelicza same warstwy.
+
+## `data/vets.json` — weterynarze i schroniska
+
+Zakładka „Weterynarz” w aplikacji. Z OSM: `amenity=veterinary` → `weterynarz`,
+`amenity=animal_shelter` → `schronisko`. Sprawdza go `contract.check_helpers`; build
+odmawia zapisu, gdy weterynarzy jest mniej niż 1000 (obcięty wynik Overpass).
+
+```json
+{
+  "generated_at": "2026-10-10T21:06:08",
+  "osm_base": "2026-10-09T01:39:36Z",
+  "count": 2337,
+  "places": [
+    {
+      "id": "node/10005041386",
+      "kind": "weterynarz",
+      "name": "Vet Mania",
+      "lat": 54.387499, "lon": 18.591279,
+      "locality": "Gdańsk", "district": "Strzyża", "region": "pomorskie",
+      "address": "Aleja Grunwaldzka 203",
+      "phone": "+48 690 248 080",
+      "website": "https://www.vetmania.vet/",
+      "openingHours": "Mo-Fr 08:00-21:00; Sa 10:00-18:00; Su 10:00-14:00",
+      "allDay": false
+    }
+  ]
+}
+```
+
+| Pole | Typ | Uwagi |
+|---|---|---|
+| `kind` | `"weterynarz"` \| `"schronisko"` | |
+| `name`, `locality`, `district`, `region`, `address`, `phone`, `website`, `openingHours` | string \| null | `website` tylko http(s); `openingHours` surowo z OSM — apka parsuje typowy zapis, resztę pokazuje tekstem |
+| `allDay` | bool | `opening_hours=24/7` albo `emergency=yes` przy gabinecie |
+
+Apka, tak jak dla wybiegów, odrzuca cały plik przy złym typie (zostaje poprzednia kopia),
+a z poprawnego bierze tylko bezpieczne wpisy (`Helpers.kt`, `sanitized()`).

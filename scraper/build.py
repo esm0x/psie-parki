@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import contract  # noqa: E402
 import overpass  # noqa: E402
 from manual import apply_manual  # noqa: E402
-from normalize import park_from  # noqa: E402
+from normalize import helper_from, park_from  # noqa: E402
 from zgloszenia import community_layer  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,13 +35,15 @@ OUT = ROOT / "data" / "parks.json"
 # OSM alone, before any correction: what --offline starts from, so the moderation run
 # can republish after every batch of submissions without asking Overpass again.
 OSM_OUT = ROOT / "data" / "osm-parks.json"
+VETS_OUT = ROOT / "data" / "vets.json"
+MIN_VETS = 1000  # 2 185 vets in OSM in October 2026
 MANUAL = ROOT / "manual" / "poprawki.json"
 COMMUNITY = ROOT / "manual" / "zgloszenia.json"
 
 QUERY = """
 [out:json][timeout:900];
 area["ISO3166-1"="PL"][admin_level=2]->.pl;
-nwr["leisure"="dog_park"](area.pl)->.parks;
+(nwr["leisure"="dog_park"](area.pl); nwr["amenity"~"^(veterinary|animal_shelter)$"](area.pl);)->.parks;
 .parks out tags geom;
 foreach.parks->.p(
   (node.p; node(w.p); way(r.p); node(w);)->.pts;
@@ -81,11 +83,45 @@ def parks_from(raw: dict[str, Any]) -> list[dict[str, Any]]:
     return parks
 
 
-def write_list(path: Path, head: dict[str, Any], parks: list[dict[str, Any]]) -> None:
+def helpers_from(raw: dict[str, Any]) -> list[dict[str, Any]]:
+    elements = raw.get("elements") or []
+    adm = {e["tags"]["ref"]: e["tags"] for e in elements
+           if e.get("type") == "adm" and (e.get("tags") or {}).get("ref")}
+    out = []
+    for el in elements:
+        if el.get("type") in {"node", "way", "relation"}:
+            h = helper_from(el, adm.get(f"{el['type']}/{el['id']}"))
+            if h:
+                out.append(h)
+    return out
+
+
+def write_helpers(raw: dict[str, Any]) -> int:
+    """data/vets.json, written only when it looks complete and passes its contract."""
+    places = sorted(helpers_from(raw), key=lambda p: p["id"])
+    vets = sum(1 for p in places if p["kind"] == "weterynarz")
+    if vets < MIN_VETS:
+        print(f"[error] only {vets} vets (< {MIN_VETS}); keeping the old vets.json", file=sys.stderr)
+        return 1
+    doc = {"generated_at": datetime.now().replace(microsecond=0).isoformat(),
+           "osm_base": (raw.get("osm3s") or {}).get("timestamp_osm_base"),
+           "count": len(places), "places": places}
+    problems = contract.check_helpers(doc)
+    if problems:
+        for p in problems[:30]:
+            print(f"[error] vets contract: {p}", file=sys.stderr)
+        return 1
+    write_list(VETS_OUT, {k: v for k, v in doc.items() if k != "places"}, places, key="places")
+    print(f"[info] wrote {VETS_OUT.relative_to(ROOT)}: {vets} vets, {len(places) - vets} shelters, "
+          f"{sum(1 for p in places if p['allDay'])} open day and night", file=sys.stderr)
+    return 0
+
+
+def write_list(path: Path, head: dict[str, Any], parks: list[dict[str, Any]], key: str = "parks") -> None:
     """One park per line: a refresh diffs as "these parks changed" instead of one huge
     line, and the file stays readable on GitHub."""
     lines = ",\n".join("    " + json.dumps(p, ensure_ascii=False, separators=(",", ":")) for p in parks)
-    text = json.dumps(head, ensure_ascii=False, indent=2)[:-2] + ',\n  "parks": [\n' + lines + "\n  ]\n}\n"
+    text = json.dumps(head, ensure_ascii=False, indent=2)[:-2] + f',\n  "{key}": [\n' + lines + "\n  ]\n}\n"
     json.loads(text)  # the hand-built layout must still be valid JSON
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
@@ -155,7 +191,10 @@ def main() -> int:
     osm_base = (raw.get("osm3s") or {}).get("timestamp_osm_base")
     parks.sort(key=lambda p: p["id"])
     write_list(OSM_OUT, {"osm_base": osm_base, "count": len(parks)}, parks)
-    return publish(parks, osm_base)
+    # Vets are a separate file the app reads on its own: a failure there must not keep
+    # the parks back, but it does make the run red.
+    vets_status = write_helpers(raw)
+    return publish(parks, osm_base) or vets_status
 
 
 if __name__ == "__main__":

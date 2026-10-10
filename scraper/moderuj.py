@@ -22,6 +22,7 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Any, Optional
 
@@ -32,11 +33,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build  # noqa: E402
 import overpass  # noqa: E402
 from normalize import place_of  # noqa: E402
-from zgloszenia import EMPTY_STATE, Moderator, Outcome  # noqa: E402
+from zgloszenia import EMPTY_STATE, Moderator, Outcome, check_record  # noqa: E402
 
 API = "https://api.github.com"
-JSON_BLOCK = re.compile(r"```json\s*(\{.*?\})\s*```", re.S)
+# The last fenced JSON block, up to the closing fence on its own line: a name that
+# contains "} ```" cannot end the block early.
+JSON_BLOCK = re.compile(r"```json\s*\n(\{.*\})\s*\n```\s*$", re.S)
 MAX_PER_RUN = 200
+TIME_BUDGET_S = 15 * 60       # a run that hits it stops early; the rest wait 30 minutes
+OVERPASS_GIVE_UP_AFTER = 3    # failures per run before new parks go without OSM context
 
 
 class GitHub:
@@ -126,7 +131,9 @@ def context_at(lat: float, lon: float) -> dict[str, Any]:
     """Admin areas and blockers at a point. Empty when Overpass is down: a submission
     then waits for nothing, it just goes on the map without those checks."""
     try:
-        raw = overpass.run(CONTEXT_QUERY.format(lat=lat, lon=lon), rounds=1, timeout=60, pause=0)
+        # One server, short timeout: a slow Overpass must not eat the whole run.
+        raw = overpass.run(CONTEXT_QUERY.format(lat=float(lat), lon=float(lon)),
+                           endpoints=overpass.ENDPOINTS[:1], rounds=1, timeout=20, pause=0)
     except overpass.OverpassError as e:
         print(f"[warn] no OSM context for {lat},{lon}: {e}", file=sys.stderr)
         return {}
@@ -154,24 +161,33 @@ def decide(gh: GitHub, bot: str, results_path: Path) -> int:
     mod = Moderator(state, known)
 
     results = []
+    started, overpass_failures = time.monotonic(), 0
     for issue in gh.open_submissions():
+        if time.monotonic() - started > TIME_BUDGET_S:
+            print("[warn] time budget spent; the rest waits for the next run", file=sys.stderr)
+            break
         if (issue.get("user") or {}).get("login") != bot:
             print(f"[warn] #{issue['number']} not opened by {bot}; ignored", file=sys.stderr)
             continue
-        rec = record_of(issue)
-        context = {}
-        if rec and rec.get("typ") == "nowy" and isinstance(rec.get("lat"), (int, float)):
-            context = context_at(rec["lat"], rec["lon"])
-        outcome: Outcome = mod.apply(issue["number"], rec or {}, context)
-        print(f"[info] #{issue['number']} {rec and rec.get('typ')}: {outcome.status} {outcome.reason or ''}",
-              file=sys.stderr)
+        try:
+            rec = record_of(issue) or {}
+            context = {}
+            # Validated before it goes anywhere near an Overpass query.
+            if rec.get("typ") == "nowy" and check_record(rec) is None and overpass_failures < OVERPASS_GIVE_UP_AFTER:
+                context = context_at(rec["lat"], rec["lon"])
+                overpass_failures += 0 if context else 1
+            outcome: Outcome = mod.apply(issue["number"], rec, context)
+        except Exception as e:  # noqa: BLE001 — one bad issue must not stall all the others
+            print(f"[error] #{issue['number']}: {e!r}", file=sys.stderr)
+            continue
+        print(f"[info] #{issue['number']} {rec.get('typ')}: {outcome.status} {outcome.reason or ''}", file=sys.stderr)
         results.append({"nr": issue["number"], **outcome.__dict__})
 
+    mod.sweep()
     build.COMMUNITY.write_text(json.dumps(mod.state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     results_path.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
     if not results:
-        print("[info] nothing to moderate", file=sys.stderr)
-        return 0
+        print("[info] no new submissions; expiry and hides still applied", file=sys.stderr)
     osm_doc = json.loads(build.OSM_OUT.read_text(encoding="utf-8"))
     return build.publish(osm_doc["parks"], osm_doc.get("osm_base"))
 

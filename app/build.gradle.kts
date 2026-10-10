@@ -45,7 +45,13 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (keystoreProps.getProperty("storeFile") != null) signingConfigs.getByName("release") else null
+            // -PqaDebugSigning: a minified release build signed with the debug key, to
+            // install on an emulator for monkey/QA runs. Never for the store.
+            signingConfig = when {
+                keystoreProps.getProperty("storeFile") != null -> signingConfigs.getByName("release")
+                project.hasProperty("qaDebugSigning") -> signingConfigs.getByName("debug")
+                else -> null
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -118,12 +124,12 @@ dependencies {
 }
 
 /**
- * Puts data/parks.json into the APK as the list a fresh install shows before its first
- * download, and the one it keeps showing offline until a download succeeds.
+ * Puts data/parks.json and data/vets.json into the APK: what a fresh install shows
+ * before its first download, and keeps showing offline until a download succeeds.
  */
 abstract class CopySeedData : DefaultTask() {
-    @get:InputFile
-    abstract val source: RegularFileProperty
+    @get:InputFiles
+    abstract val sources: ConfigurableFileCollection
 
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
@@ -133,14 +139,14 @@ abstract class CopySeedData : DefaultTask() {
         val out = outputDir.get().asFile
         out.deleteRecursively()
         out.mkdirs()
-        source.get().asFile.copyTo(File(out, "parks.json"), overwrite = true)
+        sources.files.forEach { it.copyTo(File(out, it.name), overwrite = true) }
     }
 }
 
 androidComponents {
     onVariants { variant ->
         val task = tasks.register<CopySeedData>("copy${variant.name.replaceFirstChar { it.uppercase() }}SeedData") {
-            source.set(rootProject.layout.projectDirectory.file("data/parks.json"))
+            sources.from(rootProject.file("data/parks.json"), rootProject.file("data/vets.json"))
         }
         variant.sources.assets?.addGeneratedSourceDirectory(task, CopySeedData::outputDir)
     }

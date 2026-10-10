@@ -260,3 +260,64 @@ def park_from(el: dict[str, Any], adm: Optional[dict[str, str]] = None) -> Optio
         "confirmed": True,
         "source": "osm",
     }
+
+
+# --------------------------------------------------------------------------- #
+# vets and shelters ("Weterynarz" tab)
+# --------------------------------------------------------------------------- #
+
+PHONE_OK = re.compile(r"^\+?[0-9 ()-]{7,20}$")
+
+
+def phone_of(tags: dict[str, str]) -> Optional[str]:
+    """The first usable number: OSM often holds two, split by ";"."""
+    for key in ("phone", "contact:phone", "contact:mobile", "mobile"):
+        for raw in (tags.get(key) or "").split(";"):
+            raw = raw.strip()
+            if PHONE_OK.match(raw) and sum(c.isdigit() for c in raw) >= 9:
+                return raw
+    return None
+
+
+def address_of(tags: dict[str, str]) -> Optional[str]:
+    street = tags.get("addr:street") or tags.get("addr:place")
+    number = tags.get("addr:housenumber")
+    if not street:
+        return None
+    return clean(f"{street} {number}" if number else street, 80)
+
+
+def helper_from(el: dict[str, Any], adm: Optional[dict[str, str]] = None) -> Optional[dict[str, Any]]:
+    """A vet or an animal shelter, or None for anything else or anything closed."""
+    tags = el.get("tags") or {}
+    kind = {"veterinary": "weterynarz", "animal_shelter": "schronisko"}.get(tags.get("amenity", ""))
+    if kind is None:
+        return None
+    if (tags.get("access") or "").lower() in CLOSED_ACCESS or tags.get("disused") == "yes":
+        return None
+    # Shelters for cats or wildlife only are no use to someone looking for a dog.
+    if kind == "schronisko":
+        animals = (tags.get("animal_shelter") or "").lower()
+        if animals and "dog" not in animals and animals not in ("yes", "animal", "pet"):
+            return None
+    lat, lon, _ = geometry_of(el)
+    if lat is None or lon is None:
+        return None
+    locality, district, region = place_of(adm or {})
+    locality = locality or clean(tags.get("addr:city")) or clean(tags.get("addr:place"))
+    hours = clean(tags.get("opening_hours"), 200)
+    return {
+        "id": f"{el['type']}/{el['id']}",
+        "kind": kind,
+        "name": clean(tags.get("name"), 120),
+        "lat": round(lat, 6),
+        "lon": round(lon, 6),
+        "locality": locality,
+        "district": district,
+        "region": region,
+        "address": address_of(tags),
+        "phone": phone_of(tags),
+        "website": website(tags),
+        "openingHours": hours,
+        "allDay": hours == "24/7" or (tags.get("emergency") or "").lower() == "yes",
+    }

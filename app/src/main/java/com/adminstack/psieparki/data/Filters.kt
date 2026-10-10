@@ -12,6 +12,8 @@ enum class Feature(val label: String, val test: (Park) -> Boolean?) {
 data class ParkQuery(
     val text: String = "",
     val features: Set<Feature> = emptySet(),
+    /** Ids of the parks shown when "Ulubione" is on; null means the filter is off. */
+    val onlyIds: Set<String>? = null,
 )
 
 data class RankedPark(val park: Park, val distance: Double?)
@@ -24,6 +26,7 @@ data class RankedPark(val park: Park, val distance: Double?)
 fun rank(parks: List<Park>, query: ParkQuery, origin: LatLon?): List<RankedPark> {
     val needle = foldForSearch(query.text.trim())
     return parks.asSequence()
+        .filter { p -> query.onlyIds?.contains(p.id) ?: true }
         .filter { p -> query.features.all { it.test(p) == true } }
         .filter { p ->
             needle.isEmpty() || listOfNotNull(p.name, p.locality, p.district, p.region)

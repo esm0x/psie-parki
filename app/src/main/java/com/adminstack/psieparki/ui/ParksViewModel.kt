@@ -16,13 +16,13 @@ import com.adminstack.psieparki.data.SendResult
 import com.adminstack.psieparki.data.Submission
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** What distances are measured from: the phone's position or a place the user picked. */
 data class Origin(val point: LatLon, val label: String, val fromDevice: Boolean)
@@ -46,28 +46,26 @@ class ParksViewModel(application: Application) : AndroidViewModel(application) {
     private val locating = MutableStateFlow(false)
     private val locationFailed = MutableStateFlow(false)
     private val query = MutableStateFlow(ParkQuery(features = app.settings.features))
+    private val _favourites = MutableStateFlow(app.settings.favourites)
+    val favourites: StateFlow<Set<String>> = _favourites
 
     val ui: StateFlow<ListUi> = combine(repo.state, origin, locating, locationFailed, query) { parks, o, loc, failed, q ->
-        ListUi(
-            parks = parks,
-            ranked = rank(parks.parks, q, o?.point),
-            origin = o,
-            locating = loc,
-            locationFailed = failed,
-            query = q,
-        )
-    }
-        // Sorting and filtering 600+ parks on every keystroke belongs off the main thread.
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListUi())
+        // Sorting 600+ parks per keystroke belongs off the main thread, but the result
+        // is published from here: a flowOn() before stateIn() would fuse and emit UI
+        // state from a worker thread (the Compose monkey test caught exactly that).
+        val ranked = withContext(Dispatchers.Default) { rank(parks.parks, q, o?.point) }
+        ListUi(parks = parks, ranked = ranked, origin = o, locating = loc, locationFailed = failed, query = q)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListUi())
 
     val places: StateFlow<List<Locality>> = repo.state
-        .map { localities(it.parks) }
-        .flowOn(Dispatchers.Default)
+        .map { withContext(Dispatchers.Default) { localities(it.parks) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val helpers = app.helpers.state
 
     init {
         viewModelScope.launch { repo.load() }
+        viewModelScope.launch { app.helpers.load() }
         if (app.location.hasPermission()) locate()
     }
 
@@ -101,6 +99,18 @@ class ParksViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun park(id: String) = repo.park(id)
+
+    fun toggleFavourite(id: String) {
+        val f = _favourites.value.let { if (id in it) it - id else it + id }
+        app.settings.favourites = f
+        _favourites.value = f
+        // Keep the "Ulubione" filter in step: unhearting a park while filtering removes it.
+        query.value.onlyIds?.let { query.value = query.value.copy(onlyIds = f) }
+    }
+
+    fun toggleFavouritesOnly() {
+        query.value = query.value.copy(onlyIds = if (query.value.onlyIds == null) _favourites.value else null)
+    }
 
     // ---- submissions -------------------------------------------------------
 

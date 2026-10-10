@@ -56,7 +56,8 @@ import java.util.Locale
 /**
  * "Dodaj wybieg": the place was picked on the map; here go the name and what is there.
  * Every field but the place is optional — a pin alone is already worth having, and a
- * form that asks too much does not get sent.
+ * form that asks too much does not get sent. No free-text notes: they were the one
+ * field no free filter can make safe to publish.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,7 +69,6 @@ fun AddParkScreen(
     onDone: () -> Unit,
 ) {
     var name by rememberSaveable { mutableStateOf("") }
-    var comment by rememberSaveable { mutableStateOf("") }
     val features = remember { mutableStateMapOf<Feature, Boolean>() }
     var sending by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<SendResult?>(null) }
@@ -116,19 +116,10 @@ fun AddParkScreen(
                 TriState(f, features[f]) { v -> if (v == null) features.remove(f) else features[f] = v }
             }
 
-            OutlinedTextField(
-                value = comment,
-                onValueChange = { comment = it.take(300) },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
-                label = { Text("Uwagi (opcjonalnie)") },
-                placeholder = { Text("np. wejście od ul. Leśnej, dużo cienia") },
-            )
-
             Text(
                 "Po automatycznym sprawdzeniu wybieg pojawi się w aplikacji z dopiskiem „niepotwierdzony”, " +
-                    "dopóki nie potwierdzi go ktoś jeszcze. Nazwę i uwagi sprawdza automat — bez linków, " +
-                    "reklam i danych osobowych. " +
+                    "dopóki nie potwierdzi go ktoś jeszcze. Nazwę sprawdza automat — bez linków, " +
+                    "reklam, wulgaryzmów i danych osobowych. " +
                     "Zgłoszenie jest anonimowe i trafia do publicznego repozytorium z danymi.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -145,7 +136,6 @@ fun AddParkScreen(
                                 lon = point.lon,
                                 name = name,
                                 features = features.toMap(),
-                                comment = comment,
                             ),
                             name.ifBlank { place?.let { "Wybieg, $it" } ?: "Nowy wybieg" },
                         )

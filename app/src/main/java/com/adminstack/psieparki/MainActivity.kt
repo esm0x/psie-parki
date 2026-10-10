@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -37,6 +38,10 @@ import com.adminstack.psieparki.data.Report
 import com.adminstack.psieparki.data.distanceFrom
 import com.adminstack.psieparki.ui.AboutActions
 import com.adminstack.psieparki.ui.AddParkScreen
+import com.adminstack.psieparki.ui.HelperActions
+import com.adminstack.psieparki.ui.HelpersScreen
+import com.adminstack.psieparki.ui.dial
+import com.adminstack.psieparki.ui.sharePark
 import com.adminstack.psieparki.ui.MySubmissionsScreen
 import com.adminstack.psieparki.ui.VisitCard
 import com.adminstack.psieparki.ui.AboutScreen
@@ -67,6 +72,7 @@ class MainActivity : ComponentActivity() {
 private enum class Tab(val route: String, val label: String, val icon: ImageVector) {
     LIST("list", "Lista", Icons.AutoMirrored.Outlined.FormatListBulleted),
     MAP("map", "Mapa", Icons.Outlined.Map),
+    VET("vet", "Weterynarz", Icons.Outlined.MedicalServices),
     MORE("more", "Więcej", Icons.Outlined.MoreHoriz),
 }
 
@@ -87,6 +93,8 @@ private fun AppRoot(vm: ParksViewModel = viewModel()) {
         askLocation.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
     }
     val inviteDismissed by vm.inviteDismissed.collectAsStateWithLifecycle()
+    val favourites by vm.favourites.collectAsStateWithLifecycle()
+    val helpers by vm.helpers.collectAsStateWithLifecycle()
     val sent by vm.sent.collectAsStateWithLifecycle()
     var picking by rememberSaveable { mutableStateOf(false) }
     val submissionsOn = vm.submissions.enabled
@@ -148,6 +156,7 @@ private fun AppRoot(vm: ParksViewModel = viewModel()) {
                         onOpen = { id -> nav.navigate("park?id=$id") },
                         onAddPark = addPark,
                         onDismissInvite = vm::dismissInvite,
+                        onToggleFavourites = vm::toggleFavouritesOnly,
                     ),
                     inviteDismissed = inviteDismissed,
                 )
@@ -176,6 +185,20 @@ private fun AppRoot(vm: ParksViewModel = viewModel()) {
                     picking = picking,
                 )
             }
+            composable(Tab.VET.route) {
+                HelpersScreen(
+                    places = helpers.places,
+                    origin = ui.origin?.point,
+                    originLabel = ui.origin?.label,
+                    actions = HelperActions(
+                        onCall = { h -> h.dialUri?.let { dial(context, it) } },
+                        onNavigate = { h -> navigateTo(context, h.lat, h.lon, h.title) },
+                        onOpenUrl = { openUrl(context, it) },
+                        onLocate = locate,
+                        onPickPlace = { nav.navigate("places") },
+                    ),
+                )
+            }
             composable(Tab.MORE.route) {
                 AboutScreen(
                     parkCount = ui.parks.parks.size,
@@ -199,8 +222,11 @@ private fun AppRoot(vm: ParksViewModel = viewModel()) {
                 DetailScreen(
                     park = park,
                     distance = park?.let { p -> ui.origin?.point?.let { p.distanceFrom(it) } },
+                    favourite = park?.id in favourites,
                     actions = DetailActions(
                         onBack = { nav.popBackStack() },
+                        onToggleFavourite = { vm.toggleFavourite(it.id) },
+                        onShare = { sharePark(context, it) },
                         onNavigate = { navigateTo(context, it) },
                         onShowOnMap = { showOnMap(it) },
                         onReport = { sendMail(context, Report.correction(it, version)) },

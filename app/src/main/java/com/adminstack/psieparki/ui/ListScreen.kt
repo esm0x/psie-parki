@@ -16,6 +16,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.AddLocationAlt
 import androidx.compose.material.icons.outlined.Clear
@@ -57,6 +59,7 @@ data class ListActions(
     val onOpen: (String) -> Unit = {},
     val onAddPark: () -> Unit = {},
     val onDismissInvite: () -> Unit = {},
+    val onToggleFavourites: () -> Unit = {},
 )
 
 /** How many rows are drawn at once; nobody scrolls past the nearest hundred parks. */
@@ -92,7 +95,7 @@ fun ListScreen(ui: ListUi, actions: ListActions, inviteDismissed: Boolean = fals
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item { SearchField(ui.query.text, actions.onText) }
-            item { FilterRow(ui.query.features, actions.onToggle) }
+            item { FilterRow(ui.query.features, ui.query.onlyIds != null, actions.onToggle, actions.onToggleFavourites) }
 
             // Nothing within 5 km of where the person is: the moment to ask, always.
             // Otherwise the gentler invitation, until it is closed once.
@@ -119,7 +122,9 @@ fun ListScreen(ui: ListUi, actions: ListActions, inviteDismissed: Boolean = fals
                 ui.parks.error != null -> item { Hint(ui.parks.error) }
                 ui.ranked.isEmpty() -> item {
                     Hint(
-                        if (ui.query.features.isNotEmpty()) {
+                        if (ui.query.onlyIds != null && ui.query.onlyIds.isEmpty()) {
+                            "Nie masz jeszcze ulubionych wybiegów. Dotknij serca na stronie wybiegu, żeby go tu dodać."
+                        } else if (ui.query.features.isNotEmpty()) {
                             "Żaden wybieg nie spełnia wszystkich filtrów. Wiele wybiegów nie ma jeszcze opisanych udogodnień — spróbuj z mniejszą liczbą filtrów."
                         } else {
                             "Nic nie pasuje do „${ui.query.text}”."
@@ -170,8 +175,22 @@ private fun SearchField(text: String, onText: (String) -> Unit) {
 }
 
 @Composable
-private fun FilterRow(selected: Set<Feature>, onToggle: (Feature) -> Unit) {
+private fun FilterRow(selected: Set<Feature>, favourites: Boolean, onToggle: (Feature) -> Unit, onFavourites: () -> Unit) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+            FilterChip(
+                selected = favourites,
+                onClick = onFavourites,
+                label = { Text("Ulubione") },
+                leadingIcon = {
+                    Icon(
+                        if (favourites) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = null,
+                        Modifier.size(FilterChipDefaults.IconSize),
+                    )
+                },
+            )
+        }
         items(Feature.entries) { f ->
             FilterChip(
                 selected = f in selected,

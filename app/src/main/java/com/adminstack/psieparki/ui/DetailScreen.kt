@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
@@ -45,6 +48,8 @@ import com.adminstack.psieparki.data.formatDistance
 
 data class DetailActions(
     val onBack: () -> Unit = {},
+    val onToggleFavourite: (Park) -> Unit = {},
+    val onShare: (Park) -> Unit = {},
     val onNavigate: (Park) -> Unit = {},
     val onShowOnMap: (Park) -> Unit = {},
     val onReport: (Park) -> Unit = {},
@@ -57,6 +62,7 @@ fun DetailScreen(
     park: Park?,
     distance: Double?,
     actions: DetailActions,
+    favourite: Boolean = false,
     /** "Byłeś tu?": absent when the app has no submissions worker to send to. */
     contribute: @Composable (Park) -> Unit = {},
 ) {
@@ -66,6 +72,20 @@ fun DetailScreen(
             navigationIcon = {
                 IconButton(onClick = actions.onBack) {
                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Wstecz")
+                }
+            },
+            actions = {
+                if (park != null) {
+                    IconButton(onClick = { actions.onToggleFavourite(park) }) {
+                        Icon(
+                            if (favourite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = if (favourite) "Usuń z ulubionych" else "Dodaj do ulubionych",
+                            tint = if (favourite) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(onClick = { actions.onShare(park) }) {
+                        Icon(Icons.Outlined.Share, contentDescription = "Udostępnij")
+                    }
                 }
             },
         )

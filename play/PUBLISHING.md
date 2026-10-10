@@ -48,17 +48,16 @@ formularz **nie jest już „nic nie zbieramy”**. Odpowiedzi:
 
 - **Zbiera dane?** → **Tak**:
   - *Aktywność w aplikacji → Inne treści generowane przez użytkownika*: dodane wybiegi,
-    nazwy, uwagi, potwierdzenia. Cel: **Funkcje aplikacji**. **Opcjonalne.**
+    nazwy, potwierdzenia, cechy. Cel: **Funkcje aplikacji**. **Opcjonalne.**
   - *Identyfikatory urządzenia lub inne → Identyfikator urządzenia lub inny*: losowy
     identyfikator instalacji (nie jest to ID reklamowe ani sprzętowe). Cel: **Funkcje
     aplikacji**, **Zapobieganie oszustwom i bezpieczeństwo**. **Opcjonalne.**
   - Przetwarzanie efemeryczne: **nie** (treść trafia do publicznego repozytorium).
 - **Lokalizacja** → **nie zbierana**: położenie telefonu nie opuszcza urządzenia.
   Wysyłane jest miejsce wybiegu wskazane na mapie, a nie pozycja użytkownika.
-- **Udostępnia dane?** → **Tak**: treści zgłoszeń są publikowane (GitHub) i oceniane przez
-  Anthropic. Google traktuje przekazanie usługodawcy przetwarzającemu w naszym imieniu
-  jako „nie udostępnianie”, ale publikacja w repozytorium to udostępnienie — zadeklaruj
-  *Inne treści generowane przez użytkownika*.
+- **Udostępnia dane?** → **Tak**: treści zgłoszeń są publikowane (GitHub). Cloudflare
+  i GitHub działają jako usługodawcy, ale publikacja w publicznym repozytorium to
+  udostępnienie — zadeklaruj *Inne treści generowane przez użytkownika*.
 - **Szyfrowanie w transmisji** → Tak (HTTPS).
 - **Usuwanie danych** → Użytkownik może poprosić mailem o usunięcie zgłoszenia
   (office@admin-stack.com); podaj ten adres w formularzu.
