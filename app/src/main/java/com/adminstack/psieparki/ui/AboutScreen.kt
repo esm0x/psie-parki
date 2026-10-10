@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddLocationAlt
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Policy
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Card
@@ -33,7 +34,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 data class AboutActions(
-    val onReportMissing: () -> Unit = {},
+    val onAddPark: () -> Unit = {},
+    val onMySubmissions: () -> Unit = {},
     val onRefresh: () -> Unit = {},
     val onOpenUrl: (String) -> Unit = {},
     val onMail: () -> Unit = {},
@@ -63,16 +65,18 @@ fun AboutScreen(parkCount: Int, osmBase: String?, refreshing: Boolean, version: 
                 }
             }
 
-            Row(Icons.Outlined.AddLocationAlt, "Zgłoś brakujący wybieg", "Dodamy go, a najlepiej także do OpenStreetMap", actions.onReportMissing)
+            Row(Icons.Outlined.AddLocationAlt, "Dodaj wybieg", "Zaznacz go na mapie — zajmie to minutę", actions.onAddPark)
+            Row(Icons.Outlined.Inbox, "Moje zgłoszenia", "Co się stało z tym, co wysłałeś", actions.onMySubmissions)
             Row(Icons.Outlined.Refresh, if (refreshing) "Odświeżam…" else "Odśwież listę wybiegów", "Lista aktualizuje się sama raz na dobę", actions.onRefresh)
             Row(Icons.Outlined.Email, "Kontakt", Report.EMAIL, actions.onMail)
             Row(Icons.Outlined.Policy, "Polityka prywatności", "Lokalizacja nie opuszcza telefonu") { actions.onOpenUrl(PRIVACY_URL) }
 
             Text("Skąd są dane", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
             Text(
-                "Wybiegi pochodzą z OpenStreetMap — otwartej mapy, którą tworzą wolontariusze. " +
-                    "Każdy może w niej dodać brakujący wybieg albo opisać ogrodzenie czy oświetlenie; " +
-                    "zmiana trafia tu przy najbliższej cotygodniowej aktualizacji.",
+                "Wybiegi pochodzą z OpenStreetMap — otwartej mapy, którą tworzą wolontariusze — i od " +
+                    "użytkowników aplikacji. Zgłoszenia sprawdza automat: nazwy i uwagi pod kątem spamu " +
+                    "i danych osobowych, miejsca pod kątem sensowności. Nowy wybieg jest „niepotwierdzony”, " +
+                    "dopóki nie potwierdzi go druga osoba, a znika, gdy kilka osób zgłosi, że go nie ma.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(

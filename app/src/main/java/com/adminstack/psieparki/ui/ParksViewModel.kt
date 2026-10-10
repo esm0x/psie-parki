@@ -12,7 +12,11 @@ import com.adminstack.psieparki.data.ParksState
 import com.adminstack.psieparki.data.RankedPark
 import com.adminstack.psieparki.data.localities
 import com.adminstack.psieparki.data.rank
+import com.adminstack.psieparki.data.SendResult
+import com.adminstack.psieparki.data.Submission
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -52,10 +56,14 @@ class ParksViewModel(application: Application) : AndroidViewModel(application) {
             locationFailed = failed,
             query = q,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListUi())
+    }
+        // Sorting and filtering 600+ parks on every keystroke belongs off the main thread.
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListUi())
 
     val places: StateFlow<List<Locality>> = repo.state
         .map { localities(it.parks) }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
@@ -93,4 +101,26 @@ class ParksViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun park(id: String) = repo.park(id)
+
+    // ---- submissions -------------------------------------------------------
+
+    val submissions = app.submissions
+    val sent = submissions.sent
+
+    private val _inviteDismissed = MutableStateFlow(app.settings.inviteDismissed)
+    val inviteDismissed: StateFlow<Boolean> = _inviteDismissed
+
+    fun dismissInvite() {
+        app.settings.inviteDismissed = true
+        _inviteDismissed.value = true
+    }
+
+    suspend fun send(submission: Submission, title: String): SendResult {
+        val result = submissions.send(submission, title)
+        // Someone who added a park has seen what the invitation asks for.
+        if (result is SendResult.Sent && submission.parkId == null) dismissInvite()
+        return result
+    }
+
+    fun refreshStatuses() = viewModelScope.launch { submissions.refreshStatuses() }
 }

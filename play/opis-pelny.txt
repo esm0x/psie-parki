@@ -25,11 +25,13 @@ Zgodnie z ustawieniem telefonu.
 
 RAZEM UZUPEŁNIAMY MAPĘ
 
-Wybiegów przybywa szybciej, niż ktokolwiek je opisuje. Nie ma Twojego wybiegu albo coś się nie zgadza? Przycisk „Zgłoś” otwiera gotowego maila z danymi miejsca: dopisz, co wiesz, dołącz zdjęcie i wyślij. Poprawimy dane w aplikacji i w OpenStreetMap, z którego korzysta każda otwarta mapa.
+Wybiegów przybywa szybciej, niż ktokolwiek je opisuje. Nie ma Twojego wybiegu? Zaznacz go na mapie i dodaj w minutę, bez zakładania konta. Byłeś na wybiegu? Jednym dotknięciem potwierdź, że istnieje, albo powiedz, czy jest ogrodzony, oświetlony i czy jest woda — następny psiarz będzie wiedział, czego się spodziewać.
+
+Zgłoszenia sprawdza automat: nowy wybieg jest oznaczony jako niepotwierdzony, dopóki nie potwierdzi go druga osoba, a znika, gdy kilka osób zgłosi, że go nie ma. Dzięki temu na mapę nie trafia byle co.
 
 ŹRÓDŁA DANYCH
 
-Wybiegi pochodzą z OpenStreetMap (© współtwórcy OpenStreetMap, licencja ODbL) i ze zgłoszeń użytkowników. Podkład mapy: OpenFreeMap i OpenMapTiles.
+Wybiegi pochodzą z OpenStreetMap (© współtwórcy OpenStreetMap, licencja ODbL) i od użytkowników aplikacji. Podkład mapy: OpenFreeMap i OpenMapTiles.
 
 Aplikacja jest niezależnym projektem i nie jest związana z żadnym urzędem, gminą ani zarządcą wybiegów. Dane prezentujemy w dobrej wierze, ale nie gwarantujemy ich kompletności ani aktualności. Na miejscu obowiązuje regulamin wybiegu.
 

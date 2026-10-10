@@ -9,7 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FormatListBulleted
+import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material3.Icon
@@ -36,6 +36,9 @@ import androidx.navigation.compose.rememberNavController
 import com.adminstack.psieparki.data.Report
 import com.adminstack.psieparki.data.distanceFrom
 import com.adminstack.psieparki.ui.AboutActions
+import com.adminstack.psieparki.ui.AddParkScreen
+import com.adminstack.psieparki.ui.MySubmissionsScreen
+import com.adminstack.psieparki.ui.VisitCard
 import com.adminstack.psieparki.ui.AboutScreen
 import com.adminstack.psieparki.ui.DetailActions
 import com.adminstack.psieparki.ui.DetailScreen
@@ -62,7 +65,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Tab(val route: String, val label: String, val icon: ImageVector) {
-    LIST("list", "Lista", Icons.Outlined.FormatListBulleted),
+    LIST("list", "Lista", Icons.AutoMirrored.Outlined.FormatListBulleted),
     MAP("map", "Mapa", Icons.Outlined.Map),
     MORE("more", "Więcej", Icons.Outlined.MoreHoriz),
 }
@@ -83,7 +86,25 @@ private fun AppRoot(vm: ParksViewModel = viewModel()) {
     val locate = {
         askLocation.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
     }
-    val reportMissing = { sendMail(context, Report.missing(ui.origin?.point, version)) }
+    val inviteDismissed by vm.inviteDismissed.collectAsStateWithLifecycle()
+    val sent by vm.sent.collectAsStateWithLifecycle()
+    var picking by rememberSaveable { mutableStateOf(false) }
+    val submissionsOn = vm.submissions.enabled
+    // Without a submissions worker (a build without -PzgloszeniaUrl), adding a park
+    // falls back to the pre-filled e-mail of the first version.
+    val addPark: () -> Unit = {
+        if (!submissionsOn) {
+            sendMail(context, Report.missing(ui.origin?.point, version))
+        } else {
+            selectedId = null
+            picking = true
+            ui.origin?.let { mapTarget = MapTarget(it.point, 15.5) }
+            nav.navigate(Tab.MAP.route) {
+                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+            }
+        }
+    }
     fun showOnMap(park: Park) {
         selectedId = park.id
         mapTarget = MapTarget(LatLon(park.lat, park.lon), 15.0)
@@ -125,8 +146,10 @@ private fun AppRoot(vm: ParksViewModel = viewModel()) {
                         onLocate = locate,
                         onPickPlace = { nav.navigate("places") },
                         onOpen = { id -> nav.navigate("park?id=$id") },
-                        onReportMissing = reportMissing,
+                        onAddPark = addPark,
+                        onDismissInvite = vm::dismissInvite,
                     ),
+                    inviteDismissed = inviteDismissed,
                 )
             }
             composable(Tab.MAP.route) {
@@ -143,7 +166,14 @@ private fun AppRoot(vm: ParksViewModel = viewModel()) {
                             ui.origin?.let { mapTarget = MapTarget(it.point, 12.5) }
                             locate()
                         },
+                        onStartPick = addPark,
+                        onPicked = { p ->
+                            picking = false
+                            nav.navigate("add?lat=${p.lat}&lon=${p.lon}")
+                        },
+                        onCancelPick = { picking = false },
                     ),
+                    picking = picking,
                 )
             }
             composable(Tab.MORE.route) {
@@ -153,7 +183,8 @@ private fun AppRoot(vm: ParksViewModel = viewModel()) {
                     refreshing = ui.parks.refreshing,
                     version = version,
                     actions = AboutActions(
-                        onReportMissing = reportMissing,
+                        onAddPark = addPark,
+                        onMySubmissions = { nav.navigate("moje") },
                         onRefresh = { vm.refresh() },
                         onOpenUrl = { openUrl(context, it) },
                         onMail = { sendMail(context, Report.Mail(Report.EMAIL, "Psie Parki", "")) },
@@ -175,7 +206,33 @@ private fun AppRoot(vm: ParksViewModel = viewModel()) {
                         onReport = { sendMail(context, Report.correction(it, version)) },
                         onOpenUrl = { openUrl(context, it) },
                     ),
+                    contribute = { p ->
+                        if (submissionsOn) VisitCard(p, vm.submissions.answered(p.id), vm::send)
+                    },
                 )
+            }
+            composable("add?lat={lat}&lon={lon}") { entry ->
+                val lat = entry.arguments?.getString("lat")?.toDoubleOrNull()
+                val lon = entry.arguments?.getString("lon")?.toDoubleOrNull()
+                if (lat == null || lon == null) {
+                    nav.popBackStack()
+                    return@composable
+                }
+                val point = LatLon(lat, lon)
+                // The place of the nearest known park within 3 km: a good guess to show,
+                // and only a guess — the moderation looks the real one up in OSM.
+                val place = ui.parks.parks.minByOrNull { it.distanceFrom(point) }
+                    ?.takeIf { it.distanceFrom(point) < 3_000 }?.locality
+                AddParkScreen(
+                    point = point,
+                    place = place?.let { "Okolice: $it" },
+                    onSend = vm::send,
+                    onBack = { nav.popBackStack(); picking = true },
+                    onDone = { nav.popBackStack() },
+                )
+            }
+            composable("moje") {
+                MySubmissionsScreen(sent, onRefresh = { vm.refreshStatuses() }, onBack = { nav.popBackStack() })
             }
             composable("places") {
                 PlacePickerScreen(places, onPick = { vm.pickPlace(it); nav.popBackStack() }, onBack = { nav.popBackStack() })

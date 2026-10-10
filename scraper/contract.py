@@ -54,10 +54,11 @@ def check(doc: dict[str, Any]) -> list[str]:
                 problems.append(f"{where}: {k} must be true, false or null")
         if p.get("areaM2") is not None and (not isinstance(p["areaM2"], int) or isinstance(p["areaM2"], bool) or p["areaM2"] <= 0):
             problems.append(f"{where}: areaM2 must be a positive integer or null")
-        if not isinstance(p.get("customersOnly"), bool):
-            problems.append(f"{where}: customersOnly must be true or false")
-        if p.get("source") not in {"osm", "manual"}:
-            problems.append(f"{where}: source must be osm or manual")
+        for k in ("customersOnly", "confirmed"):
+            if not isinstance(p.get(k), bool):
+                problems.append(f"{where}: {k} must be true or false")
+        if p.get("source") not in {"osm", "manual", "zgloszenie"}:
+            problems.append(f"{where}: source must be osm, manual or zgloszenie")
         if p.get("website") and not p["website"].startswith(("https://", "http://")):
             problems.append(f"{where}: website must be an http(s) URL")
     return problems

@@ -37,22 +37,34 @@ Włącz **Play App Signing** przy pierwszym wydaniu.
 | Reklamy | Nie zawiera reklam |
 | Dostęp do aplikacji | Cała zawartość dostępna bez ograniczeń |
 | Ocena treści | „Narzędzia / informacje”, wszędzie „nie” → PEGI 3 |
-| Grupa odbiorców | **13+** wystarczy: treść to tylko mapa i opisy wybiegów, bez feedów z wiadomościami. Nie zaznaczaj dzieci (włącza Families Policy) |
+| Grupa odbiorców | **13+**. Treści od użytkowników są moderowane, ale nie da się zagwarantować, że każda nadaje się dla dzieci. Nie zaznaczaj dzieci (włącza Families Policy) |
+| Treści generowane przez użytkowników | **Tak** — zgłoszenia wybiegów. Moderacja automatyczna (`MODERACJA.md`), zgłaszanie nadużyć mailem |
 | Aplikacja rządowa | Nie |
 
 ### Bezpieczeństwo danych
 
-- **Zbiera dane?** → **Nie.** Lokalizacja jest przetwarzana tylko na urządzeniu
-  (sortowanie po odległości) i nigdzie nie wysyłana — według definicji Google to nie
-  jest „zbieranie”.
-- **Udostępnia dane?** → **Nie.** Pobieranie listy wybiegów i kafelków mapy nie
-  zawiera danych użytkownika.
-- **Szyfrowanie w transmisji** → Tak (HTTPS).
-- **Usuwanie danych** → nie dotyczy (brak serwera; odinstalowanie usuwa wszystko).
+Od wersji z dodawaniem wybiegów aplikacja wysyła dane na nasz serwer (worker), więc
+formularz **nie jest już „nic nie zbieramy”**. Odpowiedzi:
 
-Uprawnienie do lokalizacji wymaga w Play Console tylko deklaracji w formularzu
-Bezpieczeństwa danych (jak wyżej); lokalizacja w tle **nie** jest używana, więc nie
-ma osobnego formularza.
+- **Zbiera dane?** → **Tak**:
+  - *Aktywność w aplikacji → Inne treści generowane przez użytkownika*: dodane wybiegi,
+    nazwy, uwagi, potwierdzenia. Cel: **Funkcje aplikacji**. **Opcjonalne.**
+  - *Identyfikatory urządzenia lub inne → Identyfikator urządzenia lub inny*: losowy
+    identyfikator instalacji (nie jest to ID reklamowe ani sprzętowe). Cel: **Funkcje
+    aplikacji**, **Zapobieganie oszustwom i bezpieczeństwo**. **Opcjonalne.**
+  - Przetwarzanie efemeryczne: **nie** (treść trafia do publicznego repozytorium).
+- **Lokalizacja** → **nie zbierana**: położenie telefonu nie opuszcza urządzenia.
+  Wysyłane jest miejsce wybiegu wskazane na mapie, a nie pozycja użytkownika.
+- **Udostępnia dane?** → **Tak**: treści zgłoszeń są publikowane (GitHub) i oceniane przez
+  Anthropic. Google traktuje przekazanie usługodawcy przetwarzającemu w naszym imieniu
+  jako „nie udostępnianie”, ale publikacja w repozytorium to udostępnienie — zadeklaruj
+  *Inne treści generowane przez użytkownika*.
+- **Szyfrowanie w transmisji** → Tak (HTTPS).
+- **Usuwanie danych** → Użytkownik może poprosić mailem o usunięcie zgłoszenia
+  (office@admin-stack.com); podaj ten adres w formularzu.
+
+Uprawnienie do lokalizacji: tylko na pierwszym planie, więc bez osobnego formularza
+o lokalizacji w tle.
 
 ## 4. Listing
 
@@ -66,6 +78,7 @@ Testowanie wewnętrzne, instalacja z linku na prawdziwym telefonie. Sprawdź:
 - zgoda na lokalizację: „tylko przybliżona” też ma posortować listę,
 - mapa: kafelki, klastry, dotknięcie pinezki, „Prowadź” (Google Maps i inna apka),
 - „Zgłoś poprawkę” otwiera pocztę z wypełnionym tematem i treścią,
+- dodanie wybiegu, „Byłeś tu?” i „Moje zgłoszenia” z prawdziwym workerem (MODERACJA.md),
 - build release (R8): czy lista nie jest pusta — to typowy objaw źle skonfigurowanego R8.
 
 Konta osobiste założone po listopadzie 2023 potrzebują 12 testerów przez 14 dni testów

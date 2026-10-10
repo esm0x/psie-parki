@@ -1,0 +1,13 @@
+{
+  "_opis": [
+    "Stan zgłoszeń z aplikacji. Plik zapisuje wyłącznie workflow moderacji",
+    "(.github/workflows/moderacja.yml) — nie edytuj go ręcznie. Ręczne poprawki",
+    "idą do manual/poprawki.json, który ma pierwszeństwo przed tym plikiem.",
+    "autor i siec to skróty (HMAC) instalacji i sieci, nie dane osobowe."
+  ],
+  "przetworzone": [],
+  "nowe": {},
+  "glosy": {},
+  "potwierdzenia": {},
+  "zaprzeczenia": {}
+}

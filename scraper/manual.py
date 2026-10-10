@@ -22,7 +22,7 @@ from typing import Any
 EDITABLE = {
     "name", "locality", "district", "region", "areaM2", "fenced", "lit", "water",
     "agility", "smallDogArea", "benches", "bins", "surface", "openingHours", "operator",
-    "website", "description", "note", "customersOnly",
+    "website", "description", "note", "customersOnly", "confirmed",
 }
 
 TEMPLATE = {
@@ -30,7 +30,7 @@ TEMPLATE = {
     "fenced": None, "lit": None, "water": None, "agility": None, "smallDogArea": None,
     "benches": None, "bins": None, "surface": None, "openingHours": None,
     "operator": None, "website": None, "description": None, "note": None,
-    "customersOnly": False,
+    "customersOnly": False, "confirmed": True,
 }
 
 MANUAL_ID = re.compile(r"^manual/[a-z0-9-]+$")
@@ -65,6 +65,8 @@ def apply_manual(parks: list[dict[str, Any]], manual: dict[str, Any]) -> tuple[l
         try:
             if not MANUAL_ID.match(pid):
                 raise ValueError("id must look like manual/<slug>")
+            if pid.startswith("manual/z-"):
+                raise ValueError("manual/z-… ids belong to submissions from the app")
             if pid in seen:
                 raise ValueError("duplicate id")
             lat, lon = float(entry["lat"]), float(entry["lon"])

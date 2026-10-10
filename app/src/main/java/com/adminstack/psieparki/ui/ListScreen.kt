@@ -55,7 +55,8 @@ data class ListActions(
     val onLocate: () -> Unit = {},
     val onPickPlace: () -> Unit = {},
     val onOpen: (String) -> Unit = {},
-    val onReportMissing: () -> Unit = {},
+    val onAddPark: () -> Unit = {},
+    val onDismissInvite: () -> Unit = {},
 )
 
 /** How many rows are drawn at once; nobody scrolls past the nearest hundred parks. */
@@ -63,7 +64,7 @@ private const val SHOWN = 100
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListScreen(ui: ListUi, actions: ListActions) {
+fun ListScreen(ui: ListUi, actions: ListActions, inviteDismissed: Boolean = false) {
     Scaffold(
         topBar = {
             TopAppBar(title = {
@@ -92,6 +93,17 @@ fun ListScreen(ui: ListUi, actions: ListActions) {
         ) {
             item { SearchField(ui.query.text, actions.onText) }
             item { FilterRow(ui.query.features, actions.onToggle) }
+
+            // Nothing within 5 km of where the person is: the moment to ask, always.
+            // Otherwise the gentler invitation, until it is closed once.
+            val nearest = ui.ranked.firstOrNull()?.distance
+            val emptyAround = ui.origin != null && !ui.parks.loading && ui.query.text.isBlank() &&
+                ui.query.features.isEmpty() && (nearest == null || nearest > 5_000)
+            if (emptyAround) {
+                item { InviteCard(nearest, actions.onAddPark, onDismiss = null) }
+            } else if (ui.origin != null && !inviteDismissed && ui.parks.parks.isNotEmpty()) {
+                item { InviteCard(nearest, actions.onAddPark, actions.onDismissInvite) }
+            }
 
             if (ui.origin == null) {
                 item { OriginPrompt(ui, actions) }
@@ -130,10 +142,10 @@ fun ListScreen(ui: ListUi, actions: ListActions) {
             }
 
             item {
-                OutlinedButton(onClick = actions.onReportMissing, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = actions.onAddPark, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Outlined.AddLocationAlt, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Brakuje wybiegu? Zgłoś go")
+                    Text("Brakuje wybiegu? Dodaj go")
                 }
             }
         }
@@ -201,12 +213,16 @@ fun ParkRow(item: RankedPark, onClick: () -> Unit) {
     ) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    park.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        park.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (!park.confirmed) UnconfirmedTag(Modifier.padding(start = 8.dp))
+                }
                 val sub = listOfNotNull(
                     item.distance?.let(::formatDistance),
                     park.place,

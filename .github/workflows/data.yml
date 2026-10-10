@@ -16,7 +16,7 @@ on:
       - '.github/workflows/data.yml'
 
 concurrency:
-  group: data
+  group: dane
   cancel-in-progress: false
 
 jobs:
@@ -55,9 +55,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/parks.json
+          git add data/parks.json data/osm-parks.json
           # generated_at changes every run; commit only when a park did.
-          if git diff --cached -U0 data/parks.json | grep -E '^[+-]\s+\{"id"' -q; then
+          if git diff --cached -U0 data/parks.json data/osm-parks.json | grep -E '^[+-]\s+\{"id"' -q; then
             git commit -m "chore(data): odświeżone wybiegi z OSM"
             git push
           else

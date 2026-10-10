@@ -19,14 +19,14 @@ ignoruje nieznane), istniejących nie wolno zmieniać ani usuwać.
      "fenced":true,"lit":null,"water":null,"agility":true,"smallDogArea":null,
      "benches":null,"bins":null,"surface":null,"openingHours":null,"operator":null,
      "website":null,"description":null,"note":"Ogrodzony, z dwiema śluzami…",
-     "customersOnly":false,"source":"osm"}
+     "customersOnly":false,"confirmed":true,"source":"osm"}
   ]
 }
 ```
 
 | Pole | Typ | Znaczenie |
 |---|---|---|
-| `id` | string | `node/…`, `way/…`, `relation/…` (jak w adresie osm.org) albo `manual/<slug>` |
+| `id` | string | `node/…`, `way/…`, `relation/…` (jak w adresie osm.org), `manual/<slug>` albo `manual/z-<nr issue>` (zgłoszenie z aplikacji) |
 | `name` | string \| null | nazwa własna; ogólniki („Wybieg dla psów”) są usuwane |
 | `lat`, `lon` | number | środek wybiegu, 6 miejsc po przecinku, w granicach Polski |
 | `locality` | string \| null | miejscowość (granica OSM poziomu 8, a gdy jej brak — gmina bez przedrostka „gmina”) |
@@ -39,7 +39,8 @@ ignoruje nieznane), istniejących nie wolno zmieniać ani usuwać.
 | `operator`, `website`, `description` | string \| null | z OSM; `website` zawsze `http(s)://` |
 | `note` | string \| null | tylko z `manual/poprawki.json`; apka pokazuje go w ramce |
 | `customersOnly` | bool | `access=customers` (wybieg hotelu, sklepu, szkoły dla psów) |
-| `source` | `"osm"` \| `"manual"` | skąd wpis |
+| `confirmed` | bool | `false` tylko dla wybiegu dodanego w aplikacji, którego nie potwierdziła jeszcze druga osoba |
+| `source` | `"osm"` \| `"manual"` \| `"zgloszenie"` | skąd wpis: OSM, `manual/poprawki.json`, zgłoszenie z aplikacji |
 
 Wybiegi z `access=private` albo `access=no` są pomijane. `failures` to lista
 `{"source", "error"}` — nigdy nie blokuje zapisu (np. poprawka do wybiegu, którego już
@@ -57,3 +58,10 @@ i plik **nie** jest zapisywany.
 | `smallDogArea` | `dog_park:small_dogs`, `small_dog`, `dog_park:separate_small_dogs` |
 | `benches` | `bench`, `benches` |
 | `bins` | `waste_basket`, `dog_park:waste_basket`, `vending:excrement_bags` |
+
+## Warstwy
+
+`data/osm-parks.json` to same dane z OSM (ten sam format wybiegu, bez kluczy
+`generated_at`/`failures`). `data/parks.json` = OSM → `manual/zgloszenia.json`
+(zgłoszenia z aplikacji po moderacji, zapisuje je tylko workflow) → `manual/poprawki.json`
+(ręczne, wygrywają). `python scraper/build.py --offline` przelicza same warstwy.

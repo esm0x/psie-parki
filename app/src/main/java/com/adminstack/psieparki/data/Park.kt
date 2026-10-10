@@ -36,9 +36,13 @@ data class Park(
     val description: String? = null,
     val note: String? = null,
     val customersOnly: Boolean = false,
+    /** False for a park someone added in the app and nobody else has confirmed yet. */
+    val confirmed: Boolean = true,
+    /** "osm", "manual" (added by hand) or "zgloszenie" (added in the app). */
     val source: String = "osm",
 ) {
     val isFromOsm: Boolean get() = source == "osm"
+    val isFromApp: Boolean get() = source == "zgloszenie"
 
     /** Where the park is on osm.org, for "edytuj w OpenStreetMap". */
     val osmUrl: String? get() = if (isFromOsm) "https://www.openstreetmap.org/$id" else null

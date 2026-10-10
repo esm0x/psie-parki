@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Every dog park in Poland → data/parks.json.
 
-    python scraper/build.py                 # Overpass, then manual/poprawki.json
+    python scraper/build.py                 # Overpass → data/osm-parks.json → data/parks.json
     python scraper/build.py --raw dump.json # from a saved Overpass answer, no network
+    python scraper/build.py --offline       # only re-apply submissions and corrections
 
 One Overpass query returns both the parks (with geometry, for the area and the pin)
 and, for each of them, the admin areas it lies in, so the app can say "Rybnik,
-Maroko-Nowiny" without shipping a gazetteer. Then the hand-written corrections in
-manual/poprawki.json go on top, the result is checked against scraper/CONTRACT.md,
+Maroko-Nowiny" without shipping a gazetteer. On top go the submissions from the app
+that passed moderation (manual/zgloszenia.json), then the hand-written corrections
+(manual/poprawki.json, which win). The result is checked against scraper/CONTRACT.md
 and only a file that passes is written.
 """
 
@@ -26,10 +28,15 @@ import contract  # noqa: E402
 import overpass  # noqa: E402
 from manual import apply_manual  # noqa: E402
 from normalize import park_from  # noqa: E402
+from zgloszenia import community_layer  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "parks.json"
+# OSM alone, before any correction: what --offline starts from, so the moderation run
+# can republish after every batch of submissions without asking Overpass again.
+OSM_OUT = ROOT / "data" / "osm-parks.json"
 MANUAL = ROOT / "manual" / "poprawki.json"
+COMMUNITY = ROOT / "manual" / "zgloszenia.json"
 
 QUERY = """
 [out:json][timeout:900];
@@ -74,14 +81,64 @@ def parks_from(raw: dict[str, Any]) -> list[dict[str, Any]]:
     return parks
 
 
+def write_list(path: Path, head: dict[str, Any], parks: list[dict[str, Any]]) -> None:
+    """One park per line: a refresh diffs as "these parks changed" instead of one huge
+    line, and the file stays readable on GitHub."""
+    lines = ",\n".join("    " + json.dumps(p, ensure_ascii=False, separators=(",", ":")) for p in parks)
+    text = json.dumps(head, ensure_ascii=False, indent=2)[:-2] + ',\n  "parks": [\n' + lines + "\n  ]\n}\n"
+    json.loads(text)  # the hand-built layout must still be valid JSON
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def publish(osm_parks: list[dict[str, Any]], osm_base: str | None) -> int:
+    """OSM, then the community's submissions, then the hand-written corrections on top
+    → data/parks.json, written only when it passes the contract."""
+    failures: list[dict[str, str]] = []
+    community = json.loads(COMMUNITY.read_text(encoding="utf-8")) if COMMUNITY.exists() else {}
+    parks = community_layer([dict(p) for p in osm_parks], community)
+    manual = json.loads(MANUAL.read_text(encoding="utf-8")) if MANUAL.exists() else {}
+    parks, manual_failures = apply_manual(parks, manual)
+    failures += manual_failures
+
+    parks.sort(key=lambda p: (p["region"] or "~", p["locality"] or "~", p["name"] or "~", p["id"]))
+    doc = {
+        "generated_at": datetime.now().replace(microsecond=0).isoformat(),
+        "osm_base": osm_base,
+        "count": len(parks),
+        "failures": failures,
+        "parks": parks,
+    }
+    problems = contract.check(doc)
+    if problems:
+        for p in problems[:30]:
+            print(f"[error] contract: {p}", file=sys.stderr)
+        print(f"[error] {len(problems)} contract violations; nothing written", file=sys.stderr)
+        return 1
+    write_list(OUT, {k: v for k, v in doc.items() if k != "parks"}, parks)
+
+    named = sum(1 for p in parks if p["name"])
+    placed = sum(1 for p in parks if p["locality"])
+    community_count = sum(1 for p in parks if p["source"] == "zgloszenie")
+    print(f"[info] wrote {OUT.relative_to(ROOT)}: {len(parks)} parks, {named} named, "
+          f"{placed} with a locality, {community_count} from the app, {len(failures)} failures",
+          file=sys.stderr)
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--raw", type=Path, help="saved Overpass answer instead of a live query")
     ap.add_argument("--save-raw", type=Path, help="also save the Overpass answer here")
+    ap.add_argument("--offline", action="store_true",
+                    help="reuse data/osm-parks.json: re-apply submissions and corrections only")
     ap.add_argument("--min-parks", type=int, default=MIN_PARKS)
     args = ap.parse_args()
 
-    failures: list[dict[str, str]] = []
+    if args.offline:
+        osm = json.loads(OSM_OUT.read_text(encoding="utf-8"))
+        return publish(osm["parks"], osm.get("osm_base"))
+
     if args.raw:
         raw = json.loads(args.raw.read_text(encoding="utf-8"))
     else:
@@ -95,41 +152,10 @@ def main() -> int:
         print(f"[error] only {len(parks)} parks (< {args.min_parks}); keeping the old file",
               file=sys.stderr)
         return 1
-
-    manual = json.loads(MANUAL.read_text(encoding="utf-8")) if MANUAL.exists() else {}
-    parks, manual_failures = apply_manual(parks, manual)
-    failures += manual_failures
-
-    parks.sort(key=lambda p: (p["region"] or "~", p["locality"] or "~", p["name"] or "~", p["id"]))
-    doc = {
-        "generated_at": datetime.now().replace(microsecond=0).isoformat(),
-        "osm_base": (raw.get("osm3s") or {}).get("timestamp_osm_base"),
-        "count": len(parks),
-        "failures": failures,
-        "parks": parks,
-    }
-
-    problems = contract.check(doc)
-    if problems:
-        for p in problems[:30]:
-            print(f"[error] contract: {p}", file=sys.stderr)
-        print(f"[error] {len(problems)} contract violations; nothing written", file=sys.stderr)
-        return 1
-
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    # One park per line: a weekly refresh then diffs as "these parks changed" instead
-    # of one 800 kB line, and the file stays readable on GitHub.
-    lines = ",\n".join("    " + json.dumps(p, ensure_ascii=False, separators=(",", ":")) for p in parks)
-    head = {k: v for k, v in doc.items() if k != "parks"}
-    text = json.dumps(head, ensure_ascii=False, indent=2)[:-2] + ',\n  "parks": [\n' + lines + "\n  ]\n}\n"
-    json.loads(text)  # the hand-built layout must still be valid JSON
-    OUT.write_text(text, encoding="utf-8")
-
-    named = sum(1 for p in parks if p["name"])
-    placed = sum(1 for p in parks if p["locality"])
-    print(f"[info] wrote {OUT.relative_to(ROOT)}: {len(parks)} parks, {named} named, "
-          f"{placed} with a locality, {len(failures)} failures", file=sys.stderr)
-    return 0
+    osm_base = (raw.get("osm3s") or {}).get("timestamp_osm_base")
+    parks.sort(key=lambda p: p["id"])
+    write_list(OSM_OUT, {"osm_base": osm_base, "count": len(parks)}, parks)
+    return publish(parks, osm_base)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,17 @@
+# Cloudflare Worker that takes submissions from the app. Setup: see MODERACJA.md.
+name = "psie-parki-zgloszenia"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[vars]
+GITHUB_REPO = "esm0x/psie-parki"
+
+# npx wrangler kv namespace create LIMITS  → paste the id here
+[[kv_namespaces]]
+binding = "LIMITS"
+id = "UZUPELNIJ_PO_UTWORZENIU"
+
+# Secrets, never in this file:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put GITHUB_TOKEN
+#   npx wrangler secret put HASH_SECRET

@@ -53,7 +53,13 @@ data class DetailActions(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetailScreen(park: Park?, distance: Double?, actions: DetailActions) {
+fun DetailScreen(
+    park: Park?,
+    distance: Double?,
+    actions: DetailActions,
+    /** "Byłeś tu?": absent when the app has no submissions worker to send to. */
+    contribute: @Composable (Park) -> Unit = {},
+) {
     Scaffold(topBar = {
         TopAppBar(
             title = { Text(park?.title ?: "Wybieg", maxLines = 1) },
@@ -74,6 +80,7 @@ fun DetailScreen(park: Park?, distance: Double?, actions: DetailActions) {
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(park.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                if (!park.confirmed) UnconfirmedTag()
                 val where = listOfNotNull(park.place, park.region?.let { "woj. $it" }).joinToString(" · ")
                 if (where.isNotEmpty()) Text(where, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 distance?.let {
@@ -113,11 +120,12 @@ fun DetailScreen(park: Park?, distance: Double?, actions: DetailActions) {
             }
             if (Feature.entries.any { it.test(park) == null }) {
                 Text(
-                    "„Brak danych” znaczy, że nikt jeszcze tego nie opisał. Jeśli wiesz — zgłoś poprawkę, uzupełnimy.",
+                    "„Brak danych” znaczy, że nikt jeszcze tego nie opisał.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            contribute(park)
 
             val facts = listOfNotNull(
                 park.areaM2?.let { "Powierzchnia" to "ok. ${formatArea(it)}" },
@@ -153,7 +161,11 @@ fun DetailScreen(park: Park?, distance: Double?, actions: DetailActions) {
                 Text("Zgłoś poprawkę")
             }
             Text(
-                if (park.isFromOsm) "Dane: © współtwórcy OpenStreetMap (ODbL)." else "Wybieg dodany na podstawie zgłoszenia.",
+                when {
+                    park.isFromOsm -> "Dane: © współtwórcy OpenStreetMap (ODbL)."
+                    park.isFromApp -> "Wybieg dodany przez użytkownika aplikacji."
+                    else -> "Wybieg dodany na podstawie zgłoszenia."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

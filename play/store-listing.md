@@ -14,14 +14,14 @@ Psie Parki
 ## Krótki opis (max 80 znaków) — `opis-krotki.txt`
 
 ```
-Wybiegi dla psów w całej Polsce: najbliższe i na mapie. Bez reklam i kont.
+Wybiegi dla psów w całej Polsce: najbliższe, na mapie. Dodaj swój. Bez reklam.
 ```
 
-74 znaki.
+78 znaków.
 
 ## Pełny opis (max 4000 znaków) — `opis-pelny.txt`
 
-2119 znaków. Zawiera zdanie o niezależności od urzędów i atrybucję OpenStreetMap
+2352 znaków. Zawiera zdanie o niezależności od urzędów i atrybucję OpenStreetMap
 (licencja ODbL jej wymaga) — **nie usuwaj ich**.
 
 ## Kategoria i kontakt
@@ -36,7 +36,7 @@ Wybiegi dla psów w całej Polsce: najbliższe i na mapie. Bez reklam i kont.
 ```
 Pierwsze wydanie. Wybiegi dla psów w całej Polsce: lista od najbliższego, mapa,
 szczegóły (ogrodzenie, oświetlenie, woda, agility), filtry, wybór miejscowości bez
-udostępniania lokalizacji i zgłaszanie brakujących wybiegów. Jasny i ciemny motyw.
+udostępniania lokalizacji. Dodawanie i potwierdzanie wybiegów. Jasny i ciemny motyw.
 ```
 
 ## Grafiki
@@ -58,7 +58,8 @@ w wynikach wyszukiwania):
 3. `03-szczegoly.png` — Co jest na wybiegu
 4. `04-filtry.png` — Tylko ogrodzone?
 5. `05-miejscowosci.png` — Bez udostępniania lokalizacji
-6. `06-ciemny-motyw.png` — Jasny i ciemny motyw
+6. `06-dodaj-wybieg.png` — Znasz wybieg? Dodaj go
+7. `07-ciemny-motyw.png` — Jasny i ciemny motyw
 
 **Tablet 7"** — `screenshots/tablet-7/`, 1080 × 1920. **Tablet 10"** — `screenshots/tablet-10/`,
 1440 × 2560. Po cztery: najbliższe, mapa, szczegóły, miejscowości.

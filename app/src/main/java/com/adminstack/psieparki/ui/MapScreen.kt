@@ -3,6 +3,7 @@ package com.adminstack.psieparki.ui
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,12 +11,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AddLocationAlt
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -70,6 +76,10 @@ data class MapActions(
     val onOpen: (String) -> Unit = {},
     val onNavigate: (Park) -> Unit = {},
     val onLocate: () -> Unit = {},
+    /** Picking mode: the user moves the map under a crosshair and confirms the spot. */
+    val onStartPick: () -> Unit = {},
+    val onPicked: (LatLon) -> Unit = {},
+    val onCancelPick: () -> Unit = {},
 )
 
 /**
@@ -84,14 +94,32 @@ fun MapScreen(
     selected: Park?,
     onSelect: (Park?) -> Unit,
     actions: MapActions,
-    map: @Composable (Modifier) -> Unit = { m -> ParksMap(parks, origin, target, onSelect, m) },
+    picking: Boolean = false,
+    map: @Composable (Modifier, (LatLon) -> Unit) -> Unit = { m, onCenter -> ParksMap(parks, origin, target, onSelect, m, onCenter) },
 ) {
+    var center by remember { mutableStateOf(target?.point ?: origin) }
     Box(Modifier.fillMaxSize()) {
-        map(Modifier.fillMaxSize())
+        map(Modifier.fillMaxSize()) { center = it }
+
+        if (picking) {
+            PickOverlay(
+                onConfirm = { center?.let(actions.onPicked) },
+                onCancel = actions.onCancelPick,
+            )
+            return@Box
+        }
+        if (selected == null) {
+            ExtendedFloatingActionButton(
+                onClick = actions.onStartPick,
+                icon = { Icon(Icons.Outlined.AddLocationAlt, contentDescription = null) },
+                text = { Text("Dodaj wybieg") },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+            )
+        }
 
         SmallFloatingActionButton(
             onClick = actions.onLocate,
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 48.dp, end = 12.dp),
+            modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 12.dp, end = 12.dp),
             containerColor = MaterialTheme.colorScheme.surface,
         ) { Icon(Icons.Outlined.MyLocation, contentDescription = "Moja lokalizacja") }
 
@@ -105,6 +133,7 @@ fun MapScreen(
                     Row(verticalAlignment = Alignment.Top) {
                         Column(Modifier.weight(1f)) {
                             Text(park.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            if (!park.confirmed) UnconfirmedTag(Modifier.padding(vertical = 2.dp))
                             val sub = listOfNotNull(
                                 origin?.let { formatDistance(park.distanceFrom(it)) },
                                 park.place,
@@ -129,6 +158,34 @@ fun MapScreen(
     }
 }
 
+/** A crosshair over the map's centre, and the buttons that turn it into a new park. */
+@Composable
+private fun BoxScope.PickOverlay(onConfirm: () -> Unit, onCancel: () -> Unit) {
+    Card(
+        Modifier.align(Alignment.TopCenter).statusBarsPadding().fillMaxWidth().padding(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+    ) {
+        Text(
+            "Przesuń mapę tak, żeby celownik był na wybiegu, i przybliż, żeby trafić dokładnie.",
+            Modifier.padding(14.dp),
+        )
+    }
+    Icon(
+        Icons.Outlined.Add,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.secondary,
+        modifier = Modifier.align(Alignment.Center).size(48.dp),
+    )
+    Row(
+        Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f), colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface)) { Text("Anuluj") }
+        Button(onClick = onConfirm, modifier = Modifier.weight(1f)) { Text("Wybieg jest tutaj") }
+    }
+}
+
 const val MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty"
 private val POLAND = LatLon(52.07, 19.48)
 
@@ -145,8 +202,10 @@ fun ParksMap(
     target: MapTarget?,
     onSelect: (Park?) -> Unit,
     modifier: Modifier = Modifier,
+    onCenter: (LatLon) -> Unit = {},
 ) {
     val context = LocalContext.current
+    val currentCenter by rememberUpdatedState(onCenter)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentSelect by rememberUpdatedState(onSelect)
     val byId = remember(parks) { parks.associateBy { it.id } }
@@ -167,8 +226,19 @@ fun ParksMap(
                     .zoom(if (origin != null) 11.5 else 5.2)
                     .build()
                 map.setStyle(Style.Builder().fromUri(MAP_STYLE)) { style ->
-                    addParkLayers(style)
+                    addParkLayers(style, labels = true)
                     styleRef = style
+                }
+                // No connection and nothing cached: the base map cannot load, and with it
+                // went the pins, so offline the tab was an empty beige rectangle. A local
+                // style with only a background keeps every park on screen; cluster counts
+                // need the style's fonts, so the offline version draws the circles alone.
+                view.addOnDidFailLoadingMapListener {
+                    if (styleRef != null) return@addOnDidFailLoadingMapListener
+                    map.setStyle(Style.Builder().fromJson(OFFLINE_STYLE)) { style ->
+                        addParkLayers(style, labels = false)
+                        styleRef = style
+                    }
                 }
                 map.addOnMapClickListener { point ->
                     val screen = map.projection.toScreenLocation(point)
@@ -180,6 +250,10 @@ fun ParksMap(
                     val hit = map.queryRenderedFeatures(screen, LAYER_POINTS).firstOrNull()
                     currentSelect(hit?.getStringProperty("id")?.let { currentById[it] })
                     true
+                }
+                map.addOnCameraIdleListener {
+                    val c = map.cameraPosition.target ?: return@addOnCameraIdleListener
+                    currentCenter(LatLon(c.latitude, c.longitude))
                 }
                 mapRef = map
             }
@@ -232,7 +306,10 @@ private fun parksCollection(parks: List<Park>): FeatureCollection =
         },
     )
 
-private fun addParkLayers(style: Style) {
+private const val OFFLINE_STYLE =
+    """{"version":8,"sources":{},"layers":[{"id":"bg","type":"background","paint":{"background-color":"#EEF2EA"}}]}"""
+
+private fun addParkLayers(style: Style, labels: Boolean) {
     val green = AndroidColor.parseColor("#2E6B3F")
     val orange = AndroidColor.parseColor("#E08A1E")
     style.addSource(
@@ -263,7 +340,7 @@ private fun addParkLayers(style: Style) {
                 ),
             ),
     )
-    style.addLayer(
+    if (labels) style.addLayer(
         SymbolLayer(LAYER_COUNT, SRC_PARKS)
             .withFilter(Expression.has("point_count"))
             .withProperties(

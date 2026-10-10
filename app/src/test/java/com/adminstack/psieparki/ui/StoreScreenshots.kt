@@ -13,6 +13,7 @@ import com.adminstack.psieparki.data.LatLon
 import com.adminstack.psieparki.data.ParkQuery
 import com.adminstack.psieparki.data.ParksFile
 import com.adminstack.psieparki.data.ParksState
+import com.adminstack.psieparki.data.SendResult
 import com.adminstack.psieparki.data.distanceFrom
 import com.adminstack.psieparki.data.localities
 import com.adminstack.psieparki.data.parksJson
@@ -79,18 +80,21 @@ class StoreScreenshots {
 
     @Test
     fun phone() {
-        shot(phone, "01-najblizsze") { ListScreen(listUi(), ListActions()) }
+        shot(phone, "01-najblizsze") { ListScreen(listUi(), ListActions(), inviteDismissed = true) }
         shot(phone, "02-mapa") { MapShot("phone") }
         shot(phone, "03-szczegoly") { Detail("node/5655915525") }
         shot(phone, "04-filtry") { ListScreen(listUi(ParkQuery(text = "Warszawa", features = setOf(Feature.FENCED))), ListActions()) }
         shot(phone, "05-miejscowosci") { PlacePickerScreen(localities(parks.parks), {}, {}) }
-        shot(phone, "06-ciemny-motyw", dark = true) { ListScreen(listUi(), ListActions()) }
+        shot(phone, "06-dodaj-wybieg") {
+            AddParkScreen(LatLon(50.0889, 18.5310), "Okolice: Rybnik", { _, _ -> SendResult.Failed("") }, {}, {})
+        }
+        shot(phone, "07-ciemny-motyw", dark = true) { ListScreen(listUi(), ListActions(), inviteDismissed = true) }
     }
 
     @Test
     fun tablets() {
         for (device in listOf(tablet7, tablet10)) {
-            shot(device, "01-najblizsze") { ListScreen(listUi(), ListActions()) }
+            shot(device, "01-najblizsze") { ListScreen(listUi(), ListActions(), inviteDismissed = true) }
             shot(device, "02-mapa") { MapShot(device.dir.removePrefix("raw-")) }
             shot(device, "03-szczegoly") { Detail("node/5655915525") }
             shot(device, "04-miejscowosci") { PlacePickerScreen(localities(parks.parks), {}, {}) }
@@ -100,7 +104,9 @@ class StoreScreenshots {
     @Composable
     private fun Detail(id: String) {
         val p = park(id)
-        DetailScreen(p, p.distanceFrom(here), DetailActions())
+        DetailScreen(p, p.distanceFrom(here), DetailActions(), contribute = { park ->
+            VisitCard(park, emptySet()) { _, _ -> SendResult.Failed("") }
+        })
     }
 
     @Composable
@@ -115,7 +121,7 @@ class StoreScreenshots {
             selected = park("node/5655915525"),
             onSelect = {},
             actions = MapActions(),
-            map = { m -> Image(bitmap, contentDescription = null, modifier = m, contentScale = ContentScale.Crop) },
+            map = { m, _ -> Image(bitmap, contentDescription = null, modifier = m, contentScale = ContentScale.Crop) },
         )
     }
 }

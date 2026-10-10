@@ -25,6 +25,9 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
+        // The submissions worker (worker/, MODERACJA.md). Empty: the app falls back to
+        // e-mail. Set in ~/.gradle/gradle.properties or with -PzgloszeniaUrl=https://…
+        buildConfigField("String", "SUBMIT_URL", "\"${project.findProperty("zgloszeniaUrl") ?: ""}\"")
         // MapLibre ships native code for four ABIs; an App Bundle hands each phone
         // only its own, so nothing is filtered here.
     }
@@ -99,7 +102,11 @@ dependencies {
 
     // The map. Vector tiles from OpenFreeMap: no API key, no request quota, and
     // allowed in apps, unlike tile.openstreetmap.org, whose policy forbids them.
-    implementation("org.maplibre.gl:android-sdk:13.5.3")
+    // The OpenGL ES build, not the default one: the default renders with Vulkan, and
+    // its renderer crashed (SIGSEGV in libmaplibre) on the first map frame on an
+    // Android 11 emulator. Vulkan drivers on cheaper and older phones are no better;
+    // OpenGL ES works on everything this app supports.
+    implementation("org.maplibre.gl:android-sdk-opengl:13.5.3")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.16")

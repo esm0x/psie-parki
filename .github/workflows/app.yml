@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths-ignore:
       - 'data/**'
+      - 'manual/zgloszenia.json'
 
 jobs:
   test:
@@ -21,3 +22,34 @@ jobs:
         run: ./gradlew testDebugUnitTest assembleDebug
       - name: Build release (R8)
         run: ./gradlew assembleRelease
+
+  worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - run: npm ci
+      - name: Typy
+        run: npm run check
+      - name: Testy
+        run: npm test
+
+  moderacja:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Testy scrapera i moderacji
+        run: python -m unittest discover -s scraper/tests -t scraper
+      - name: Dane przechodzą kontrakt
+        run: python scraper/build.py --offline

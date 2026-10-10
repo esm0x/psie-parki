@@ -257,5 +257,6 @@ def park_from(el: dict[str, Any], adm: Optional[dict[str, str]] = None) -> Optio
         "description": clean(tags.get("description:pl") or tags.get("description")),
         "note": None,
         "customersOnly": (tags.get("access") or "").lower() == "customers",
+        "confirmed": True,
         "source": "osm",
     }
