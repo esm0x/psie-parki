@@ -1,0 +1,25 @@
+{
+  "_jak_dodac": [
+    "Plik edytowany RĘCZNIE. Scraper (scraper/build.py) go czyta i nakłada na dane z OpenStreetMap.",
+    "Klucz to identyfikator z adresu osm.org, np. https://www.openstreetmap.org/node/5655915525 -> \"node/5655915525\".",
+    "",
+    "zmiany  — pola do nadpisania: name, locality, district, fenced, lit, water, agility, smallDogArea,",
+    "          benches, bins, surface, openingHours, operator, website, description, note, customersOnly.",
+    "          true/false/null dla cech. 'note' pokazuje się w aplikacji w żółtej ramce.",
+    "ukryte  — wybiegi do pominięcia, z powodem jako wartością (zlikwidowany, to nie wybieg).",
+    "dodane  — wybiegi, których nie ma w OSM: id 'manual/<nazwa-bez-polskich-znakow>', lat, lon i dowolne pola.",
+    "",
+    "Fakty o miejscu (jest ogrodzenie, jest woda) najlepiej wpisać też w OSM — wtedy zna je każda mapa.",
+    "Ten plik jest na to, czego OSM nie przechowa, i na tydzień między zgłoszeniem a aktualizacją OSM.",
+    "Błędny wpis nie psuje aktualizacji: zostaje pominięty i opisany w 'failures' w data/parks.json."
+  ],
+  "zmiany": {
+    "node/5655915525": {
+      "fenced": true,
+      "agility": true,
+      "note": "Ogrodzony, z dwiema śluzami wejściowymi i sprzętem do agility (według opisu z otwarcia w 2016 r.)."
+    }
+  },
+  "ukryte": {},
+  "dodane": []
+}

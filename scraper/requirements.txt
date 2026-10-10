@@ -1,0 +1,4 @@
+requests>=2.31
+# Only for scraper/pbf.py, the fallback when Overpass is down:
+osmium>=4.0
+shapely>=2.0

@@ -1,0 +1,65 @@
+name: Dane wybiegów
+
+# Every Monday: all dog parks in Poland from OSM → data/parks.json, one commit if it
+# changed. Overpass first; when every Overpass server fails, the same data from the
+# Geofabrik extract of Poland (2 GB, a few minutes on a runner).
+
+on:
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scraper/**'
+      - 'manual/**'
+      - '.github/workflows/data.yml'
+
+concurrency:
+  group: data
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: scraper/requirements.txt
+
+      - run: pip install -r scraper/requirements.txt
+
+      - name: Testy scrapera
+        run: python -m unittest discover -s scraper/tests -t scraper
+
+      - name: Overpass
+        id: overpass
+        continue-on-error: true
+        run: python scraper/build.py
+
+      - name: Wycinek OSM (gdy Overpass nie działa)
+        if: steps.overpass.outcome == 'failure'
+        run: |
+          curl -fsSL -o poland.osm.pbf https://download.geofabrik.de/europe/poland-latest.osm.pbf
+          python scraper/pbf.py poland.osm.pbf -o raw.json
+          python scraper/build.py --raw raw.json
+          rm -f poland.osm.pbf raw.json
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/parks.json
+          # generated_at changes every run; commit only when a park did.
+          if git diff --cached -U0 data/parks.json | grep -E '^[+-]\s+\{"id"' -q; then
+            git commit -m "chore(data): odświeżone wybiegi z OSM"
+            git push
+          else
+            echo "Bez zmian w wybiegach."
+          fi
