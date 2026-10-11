@@ -42,6 +42,11 @@ JSON_BLOCK = re.compile(r"```json\s*\n(\{.*\})\s*\n```\s*$", re.S)
 MAX_PER_RUN = 200
 TIME_BUDGET_S = 15 * 60       # a run that hits it stops early; the rest wait 30 minutes
 OVERPASS_GIVE_UP_AFTER = 3    # failures per run before new parks go without OSM context
+# The worker labels new issues with the first two; the app reads the status ones back.
+LABELS = {
+    "zgloszenie": "0e8a16", "typ:nowy": "c5def5", "typ:cechy": "c5def5", "typ:potwierdzam": "c5def5",
+    "typ:nie_istnieje": "c5def5", "przyjete": "0e8a16", "niepotwierdzone": "fbca04", "odrzucone": "b60205",
+}
 
 
 class GitHub:
@@ -54,6 +59,16 @@ class GitHub:
             "x-github-api-version": "2022-11-28",
             "user-agent": "psie-parki-moderacja",
         })
+
+    def ensure_labels(self) -> None:
+        """Creates the labels a submission needs, so setup is one manual run of the workflow."""
+        r = self.s.get(f"{API}/repos/{self.repo}/labels", params={"per_page": 100}, timeout=30)
+        r.raise_for_status()
+        have = {label["name"] for label in r.json()}
+        for name, color in LABELS.items():
+            if name not in have:
+                self.s.post(f"{API}/repos/{self.repo}/labels", json={"name": name, "color": color},
+                            timeout=30).raise_for_status()
 
     def open_submissions(self) -> list[dict[str, Any]]:
         issues, page = [], 1
@@ -150,6 +165,7 @@ def context_at(lat: float, lon: float) -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 
 def decide(gh: GitHub, bot: str, results_path: Path) -> int:
+    gh.ensure_labels()
     state = json.loads(build.COMMUNITY.read_text(encoding="utf-8")) if build.COMMUNITY.exists() else dict(EMPTY_STATE)
     osm = json.loads(build.OSM_OUT.read_text(encoding="utf-8"))["parks"]
     manual = json.loads(build.MANUAL.read_text(encoding="utf-8")) if build.MANUAL.exists() else {}

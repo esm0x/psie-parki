@@ -19,8 +19,11 @@ concurrency:
 
 jobs:
   moderate:
-    # Only issues the worker opened with its label; anything else is not a submission.
-    if: github.event_name != 'issues' || (contains(github.event.issue.labels.*.name, 'zgloszenie') && github.event.issue.user.login == vars.ZGLOSZENIA_BOT)
+    # Dormant until ZGLOSZENIA_BOT is set (MODERACJA.md, step 2). Then only issues the
+    # worker opened with its label; anything else is not a submission.
+    if: >-
+      vars.ZGLOSZENIA_BOT != '' &&
+      (github.event_name != 'issues' || (contains(github.event.issue.labels.*.name, 'zgloszenie') && github.event.issue.user.login == vars.ZGLOSZENIA_BOT))
     runs-on: ubuntu-latest
     permissions:
       contents: write

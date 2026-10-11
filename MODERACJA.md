@@ -60,7 +60,7 @@ muszą odpaść; dopisz tam każdy przypadek, który się prześlizgnie.
 | Dziennie: 10 na instalację, 20 na sieć (IPv4 /24, IPv6 /64) | worker, KV | zalew zgłoszeń |
 | Anonimizacja: HMAC instalacji (`autor`) i sieci (`siec`) | worker | w repo nie ma ID urządzeń ani adresów IP |
 | Status zgłoszenia tylko z tokenem z odpowiedzi, z cache | worker | wyliczanie cudzych zgłoszeń, zużycie limitu API |
-| Tylko issues od konta workera z etykietą `zgloszenie`, JSON z ostatniego bloku | `moderacja.yml`, `moderuj.py` | obca osoba nie wstrzyknie zgłoszenia |
+| Tylko issues od konta z `ZGLOSZENIA_BOT` z etykietą `zgloszenie`, JSON z ostatniego bloku | `moderacja.yml`, `moderuj.py` | obca osoba nie wstrzyknie zgłoszenia |
 | Punkt w wodzie, budynku, na torach, przy autostradzie → odmowa | `moderuj.py` (Overpass) | pinezki postawione byle gdzie |
 | Nowy wybieg ≤ 60 m od znanego = potwierdzenie tamtego | `zgloszenia.py` | duplikaty |
 | Niezależność liczy się po **sieci**, nie instalacji; potwierdzenie musi przyjść innego dnia | `zgloszenia.py` | jedna osoba z kilkoma telefonami albo reinstalacją |
@@ -71,54 +71,105 @@ muszą odpaść; dopisz tam każdy przypadek, który się prześlizgnie.
 | `manual/poprawki.json` ma pierwszeństwo | `build.py` | Ty zawsze możesz ukryć lub poprawić ręcznie |
 | Każda decyzja = komentarz w issue + commit | GitHub | pełny ślad, revert jednym commitem |
 
-## Uruchomienie (jednorazowo, ok. 20 minut)
+## Uruchomienie (jednorazowo, ok. 30 minut)
 
-### 1. Konto GitHub dla workera
+Potrzebujesz: konta GitHub z dostępem do repo, darmowego konta Cloudflare i komputera
+z Node.js 20+ (`node -v`). Dopóki nie skończysz kroku 2, workflow moderacji śpi.
 
-Najprościej: osobne konto (np. `psie-parki-bot`) dodane do repo jako współpracownik
-z rolą **Triage** — może zakładać i etykietować issues, nie może pushować.
-Na tym koncie: *Settings → Developer settings → Fine-grained tokens* → token tylko do
-`esm0x/psie-parki`, uprawnienie **Issues: Read and write**. To jest `GITHUB_TOKEN` workera.
+### 1. Token GitHub dla workera
 
-W repo: *Settings → Secrets and variables → Actions → Variables* →
-`ZGLOSZENIA_BOT` = login tego konta. Workflow ignoruje issues od kogokolwiek innego.
+Worker zakłada issues **z Twojego konta**, tokenem, który umie tylko to. Osobne konto-bot
+z rolą Triage nie zadziała: GitHub po cichu zdejmuje etykiety z nowych issues, jeśli
+autor nie ma prawa zapisu, i moderacja nigdy by ich nie zobaczyła.
 
-Utwórz etykiety: `zgloszenie`, `typ:nowy`, `typ:cechy`, `typ:potwierdzam`,
-`typ:nie_istnieje`, `przyjete`, `niepotwierdzone`, `odrzucone`
-(etykiety `powod:*` workflow tworzy sam przy pierwszym użyciu).
+1. https://github.com/settings/personal-access-tokens/new (*Fine-grained token*).
+2. **Token name:** `psie-parki-worker`. **Expiration:** najdłuższa możliwa; wpisz sobie
+   przypomnienie, bo po wygaśnięciu aplikacja zacznie pokazywać „nie udało się wysłać”.
+3. **Repository access → Only select repositories →** `esm0x/psie-parki`.
+4. **Permissions → Repository permissions → Issues: Read and write.** Nic więcej
+   (Metadata: Read-only dopisze się sama).
+5. **Generate token**, skopiuj `github_pat_…` — przyda się w kroku 3.
 
-GITHUB_TOKEN workflow (wbudowany) wystarcza do reszty; żadnych innych kluczy nie ma.
+### 2. Włączenie moderacji w repo
 
-### 2. Worker na Cloudflare (darmowy plan wystarczy)
+1. Repo → *Settings → Secrets and variables → Actions →* zakładka **Variables** →
+   *New repository variable*: `ZGLOSZENIA_BOT` = `esm0x` (login właściciela tokenu).
+   Workflow bierze pod uwagę tylko issues od tego konta.
+2. Repo → *Actions → Moderacja zgłoszeń → Run workflow*. Pierwszy przebieg zakłada
+   etykiety (`zgloszenie`, `typ:*`, `przyjete`, `niepotwierdzone`, `odrzucone`) i kończy
+   się na zielono. Od teraz rusza co 30 minut i przy każdym nowym zgłoszeniu.
+3. Nie włączaj ochrony gałęzi `main`, która blokuje push z GitHub Actions — workflow
+   commituje tam decyzje.
+
+Wbudowany `GITHUB_TOKEN` workflow wystarcza do reszty; żadnych innych kluczy nie ma.
+
+### 3. Worker na Cloudflare
+
+Konto: https://dash.cloudflare.com/sign-up (plan Free, karta niepotrzebna). Potem
+w terminalu, w katalogu repo:
 
 ```bash
 cd worker
-npm install
-npx wrangler login
-npx wrangler kv namespace create LIMITS      # id wklej do wrangler.toml
-npx wrangler secret put GITHUB_TOKEN
-npx wrangler secret put HASH_SECRET           # dowolny długi losowy ciąg; nie zmieniaj go potem
-npx wrangler deploy                           # wypisze adres, np. https://psie-parki-zgloszenia.<konto>.workers.dev
+npm ci
+npx wrangler login                      # otworzy przeglądarkę, kliknij Allow
+npx wrangler kv namespace create LIMITS
 ```
 
-### 3. Aplikacja
+Ostatnie polecenie wypisze `id = "…"`. Wklej je w `worker/wrangler.toml` w miejsce
+`UZUPELNIJ_PO_UTWORZENIU` (i zacommituj — to nie jest tajne).
 
-Adres workera wchodzi do buildu przez właściwość Gradle (nie jest w repo):
-
-```properties
-# ~/.gradle/gradle.properties
-zgloszeniaUrl=https://psie-parki-zgloszenia.<konto>.workers.dev
+```bash
+npx wrangler secret put GITHUB_TOKEN    # wklej github_pat_… z kroku 1
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+npx wrangler secret put HASH_SECRET     # wklej wynik polecenia wyżej; nigdy go nie zmieniaj
+npx wrangler deploy
 ```
 
-Build bez tej właściwości działa jak wersja 1.0: „Dodaj wybieg” otwiera gotowego maila.
+Przy pierwszym `deploy` Cloudflare może poprosić o wybór subdomeny `*.workers.dev`.
+Na końcu wypisze adres, np. `https://psie-parki-zgloszenia.<subdomena>.workers.dev` —
+to jest `URL` z kroków 4 i 5. `HASH_SECRET` zmieniony później rozdzieliłby te same osoby
+na nowe, więc limity i potwierdzenia liczyłyby je podwójnie.
 
 ### 4. Sprawdzenie
 
 ```bash
+URL=https://psie-parki-zgloszenia.<subdomena>.workers.dev
 curl -s -X POST "$URL/zgloszenie" -H 'content-type: application/json' \
   -d '{"typ":"potwierdzam","parkId":"node/5655915525","instalacja":"3f1c2b4a-8d7e-4f6a-9b0c-1d2e3f4a5b6c","wersja":"test"}'
-# → {"nr": 12, "token": "…", "status": "oczekuje"}; w repo pojawia się issue, po ≤30 min komentarz i zamknięcie
+# → {"nr":12,"token":"…","status":"oczekuje"}
 ```
+
+W repo pojawi się issue `[Potwierdzenie] node/5655915525` z etykietą `zgloszenie`, a po paru minutach
+komentarz moderacji i zamknięcie. Status, tak jak pyta aplikacja:
+
+```bash
+curl -s "$URL/zgloszenie/12?t=<token z odpowiedzi>"   # → {"nr":12,"status":"przyjete",…}
+```
+
+To prawdziwe potwierdzenie Górki dla Burka — nieszkodliwe. Gdy coś nie działa:
+`npx wrangler tail` pokazuje na żywo, co dzieje się w workerze, a zakładka *Actions*
+w repo — logi moderacji.
+
+### 5. Aplikacja
+
+Adres workera wchodzi do buildu przez właściwość Gradle (nie ma go w repo):
+
+```properties
+# ~/.gradle/gradle.properties
+zgloszeniaUrl=https://psie-parki-zgloszenia.<subdomena>.workers.dev
+```
+
+Potem `./gradlew bundleRelease` (podpis: `play/PUBLISHING.md`). Build bez tej
+właściwości działa jak wersja 1.0: „Dodaj wybieg” otwiera gotowego maila.
+
+### Utrzymanie
+
+- **Token wygasł** → nowy jak w kroku 1, potem `npx wrangler secret put GITHUB_TOKEN`.
+- **Zmiana kodu workera** → `cd worker && npm test && npx wrangler deploy`.
+- **Coś się prześlizgnęło** → dopisz przypadek w `worker/test/filter.test.ts`, popraw
+  `src/filter.ts`, deploy; sam wybieg schowaj w `manual/poprawki.json`.
+- **Powiadomienia**: issues zakłada Twoje konto, więc GitHub może przysyłać maile
+  o komentarzach moderacji. Wyłączysz to w repo: *Watch → Custom → bez Issues*.
 
 ## Na co uważać
 
@@ -129,7 +180,6 @@ curl -s -X POST "$URL/zgloszenie" -H 'content-type: application/json' \
   nowego wybiegu pokazuje się jako „niepotwierdzona”, dopóki ktoś z innej sieci go nie
   potwierdzi, a każdą nazwę możesz nadpisać w `manual/poprawki.json`.
 - **Nazwy z OSM nie przechodzą przez filtr** — moderują je mapujący OSM.
-- **Push z workflow do `main`** wymaga, żeby gałąź nie była chroniona przed GitHub Actions.
 - **Zdjęcia** celowo nie są obsługiwane: moderacja obrazów i hosting to osobny temat.
 - **Do OSM nic nie trafia automatycznie** — import danych do OSM wymaga zgody społeczności.
   Potwierdzone wybiegi z aplikacji warto co jakiś czas wprowadzić tam ręcznie.
