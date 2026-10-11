@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose draws everything; this only sets the window before the first frame. -->
+    <style name="Theme.PsieParki" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window</item>
+    </style>
+    <color name="window">#F7FAF4</color>
+    <color name="ic_background">#2E6B3F</color>
+</resources>

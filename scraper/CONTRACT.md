@@ -1,0 +1,104 @@
+# Kontrakt danych — scraper ↔ aplikacja
+
+`scraper/build.py` zapisuje `data/parks.json`. Aplikacja pobiera go spod
+`https://raw.githubusercontent.com/esm0x/psie-parki/main/data/parks.json` i deserializuje
+1:1 do `Park` w `app/.../data/Park.kt`. Przed zapisem `scraper/contract.py` sprawdza plik
+z tym dokumentem — plik łamiący kontrakt nie zostaje zapisany, w repo zostaje poprzedni.
+**Nazwy pól są wiążące**: literówka = puste pole w apce. Nowe pola wolno dodawać (apka
+ignoruje nieznane), istniejących nie wolno zmieniać ani usuwać.
+
+```json
+{
+  "generated_at": "2026-10-10T19:09:41",
+  "osm_base": "2026-10-09T01:39:36Z",
+  "count": 618,
+  "failures": [],
+  "parks": [
+    {"id":"node/5655915525","name":"Górka dla Burka","lat":50.102656,"lon":18.515964,
+     "locality":"Rybnik","district":"Maroko-Nowiny","region":"śląskie","areaM2":null,
+     "fenced":true,"lit":null,"water":null,"agility":true,"smallDogArea":null,
+     "benches":null,"bins":null,"surface":null,"openingHours":null,"operator":null,
+     "website":null,"description":null,"note":"Ogrodzony, z dwiema śluzami…",
+     "customersOnly":false,"confirmed":true,"source":"osm"}
+  ]
+}
+```
+
+| Pole | Typ | Znaczenie |
+|---|---|---|
+| `id` | string | `node/…`, `way/…`, `relation/…` (jak w adresie osm.org), `manual/<slug>` albo `manual/z-<nr issue>` (zgłoszenie z aplikacji) |
+| `name` | string \| null | nazwa własna; ogólniki („Wybieg dla psów”) są usuwane |
+| `lat`, `lon` | number | środek wybiegu, 6 miejsc po przecinku, w granicach Polski |
+| `locality` | string \| null | miejscowość (granica OSM poziomu 8, a gdy jej brak — gmina bez przedrostka „gmina”) |
+| `district` | string \| null | dzielnica (poziom 9, a gdy brak — osiedle, poziom 10) |
+| `region` | string \| null | województwo bez słowa „województwo” |
+| `areaM2` | int \| null | powierzchnia z obrysu, dla punktów `null` |
+| `fenced`, `lit`, `water`, `agility`, `smallDogArea`, `benches`, `bins` | bool \| null | **`null` = nikt nie opisał**, nie „nie” |
+| `surface` | string \| null | po polsku: „trawa”, „piasek, żwir” |
+| `openingHours` | string \| null | `opening_hours` z OSM; `24/7` → „całą dobę” |
+| `operator`, `website`, `description` | string \| null | z OSM; `website` zawsze `http(s)://` |
+| `note` | string \| null | tylko z `manual/poprawki.json`; apka pokazuje go w ramce |
+| `customersOnly` | bool | `access=customers` (wybieg hotelu, sklepu, szkoły dla psów) |
+| `confirmed` | bool | `false` tylko dla wybiegu dodanego w aplikacji, którego nie potwierdziła jeszcze druga osoba |
+| `source` | `"osm"` \| `"manual"` \| `"zgloszenie"` | skąd wpis: OSM, `manual/poprawki.json`, zgłoszenie z aplikacji |
+
+Wybiegi z `access=private` albo `access=no` są pomijane. `failures` to lista
+`{"source", "error"}` — nigdy nie blokuje zapisu (np. poprawka do wybiegu, którego już
+nie ma w OSM). Mniej niż 400 wybiegów w całym kraju oznacza uciętą odpowiedź Overpass
+i plik **nie** jest zapisywany.
+
+## Skąd cechy (tagi OSM)
+
+| Cecha | Tagi, pierwszy pasujący wygrywa |
+|---|---|
+| `fenced` | `fenced`, `fence`, `dog_park:fenced`, a potem `barrier=fence/wall/…` |
+| `lit` | `lit` (`24/7`, `sunset-sunrise` = tak) |
+| `water` | `drinking_water`, `dog_park:drinking_water`, `water_point` |
+| `agility` | `dog_park:agility`, `agility`, `dog_agility`, `playground:dog` |
+| `smallDogArea` | `dog_park:small_dogs`, `small_dog`, `dog_park:separate_small_dogs` |
+| `benches` | `bench`, `benches` |
+| `bins` | `waste_basket`, `dog_park:waste_basket`, `vending:excrement_bags` |
+
+## Warstwy
+
+`data/osm-parks.json` to same dane z OSM (ten sam format wybiegu, bez kluczy
+`generated_at`/`failures`). `data/parks.json` = OSM → `manual/zgloszenia.json`
+(zgłoszenia z aplikacji po moderacji, zapisuje je tylko workflow) → `manual/poprawki.json`
+(ręczne, wygrywają). `python scraper/build.py --offline` przelicza same warstwy.
+
+## `data/vets.json` — weterynarze i schroniska
+
+Zakładka „Weterynarz” w aplikacji. Z OSM: `amenity=veterinary` → `weterynarz`,
+`amenity=animal_shelter` → `schronisko`. Sprawdza go `contract.check_helpers`; build
+odmawia zapisu, gdy weterynarzy jest mniej niż 1000 (obcięty wynik Overpass).
+
+```json
+{
+  "generated_at": "2026-10-10T21:06:08",
+  "osm_base": "2026-10-09T01:39:36Z",
+  "count": 2337,
+  "places": [
+    {
+      "id": "node/10005041386",
+      "kind": "weterynarz",
+      "name": "Vet Mania",
+      "lat": 54.387499, "lon": 18.591279,
+      "locality": "Gdańsk", "district": "Strzyża", "region": "pomorskie",
+      "address": "Aleja Grunwaldzka 203",
+      "phone": "+48 690 248 080",
+      "website": "https://www.vetmania.vet/",
+      "openingHours": "Mo-Fr 08:00-21:00; Sa 10:00-18:00; Su 10:00-14:00",
+      "allDay": false
+    }
+  ]
+}
+```
+
+| Pole | Typ | Uwagi |
+|---|---|---|
+| `kind` | `"weterynarz"` \| `"schronisko"` | |
+| `name`, `locality`, `district`, `region`, `address`, `phone`, `website`, `openingHours` | string \| null | `website` tylko http(s); `openingHours` surowo z OSM — apka parsuje typowy zapis, resztę pokazuje tekstem |
+| `allDay` | bool | `opening_hours=24/7` albo `emergency=yes` przy gabinecie |
+
+Apka, tak jak dla wybiegów, odrzuca cały plik przy złym typie (zostaje poprzednia kopia),
+a z poprawnego bierze tylko bezpieczne wpisy (`Helpers.kt`, `sanitized()`).

@@ -1,0 +1,44 @@
+Psie Parki pokazują wybiegi dla psów w całej Polsce: który jest najbliżej, jak do niego dojść i co na nim jest. Bez reklam, bez zakładania konta i bez zbierania danych.
+
+CO ZNAJDZIESZ W APLIKACJI
+
+Najbliższe wybiegi
+Lista od najbliższego wybiegu, z odległością i dzielnicą. Wystarczy jedno dotknięcie, żeby zobaczyć szczegóły albo uruchomić nawigację w ulubionej aplikacji z mapami.
+
+Mapa
+Wszystkie wybiegi na mapie Polski. Dotknij pinezki, żeby zobaczyć, co to za miejsce, i ruszyć w drogę. Zielone pinezki to wybiegi ogrodzone.
+
+Co jest na wybiegu
+Ogrodzenie, oświetlenie, woda dla psów, sprzęt do agility, osobna część dla małych psów, nawierzchnia, powierzchnia i godziny otwarcia. Jeśli czegoś nikt jeszcze nie opisał, aplikacja uczciwie pisze „brak danych”, a nie „nie”.
+
+Weterynarz w pobliżu
+Ponad 2000 gabinetów weterynaryjnych w całej Polsce, od najbliższego. Aplikacja pokazuje, który jest otwarty teraz, a który działa całodobowo, i otwiera telefon z wpisanym numerem jednym dotknięciem. Tu też znajdziesz najbliższe schroniska.
+
+Ulubione i udostępnianie
+Zapisz swoje wybiegi w ulubionych i wyślij znajomym link do wybiegu, na którym się umawiacie.
+
+Filtry
+Szukasz tylko ogrodzonych wybiegów, bo pies lubi zwiewać? Albo oświetlonych na wieczorny spacer? Włącz filtr, a lista pokaże tylko te, które pasują.
+
+Bez udostępniania lokalizacji
+Nie chcesz włączać lokalizacji? Wybierz miejscowość z listy i gotowe. Jeśli ją włączysz, położenie zostaje w telefonie i służy wyłącznie do liczenia odległości.
+
+Działa bez internetu
+Lista wybiegów zapisuje się w telefonie, więc znajdziesz najbliższy wybieg także bez zasięgu. Aktualizuje się sama raz na dobę.
+
+Jasny i ciemny motyw
+Zgodnie z ustawieniem telefonu.
+
+RAZEM UZUPEŁNIAMY MAPĘ
+
+Wybiegów przybywa szybciej, niż ktokolwiek je opisuje. Nie ma Twojego wybiegu? Zaznacz go na mapie i dodaj w minutę, bez zakładania konta. Byłeś na wybiegu? Jednym dotknięciem potwierdź, że istnieje, albo powiedz, czy jest ogrodzony, oświetlony i czy jest woda — następny psiarz będzie wiedział, czego się spodziewać.
+
+Zgłoszenia sprawdza automat: odrzuca wulgaryzmy i reklamy, nowy wybieg jest oznaczony jako niepotwierdzony, dopóki nie potwierdzi go druga osoba, a znika, gdy kilka osób zgłosi, że go nie ma. Dzięki temu na mapę nie trafia byle co.
+
+ŹRÓDŁA DANYCH
+
+Wybiegi, weterynarze i schroniska pochodzą z OpenStreetMap (© współtwórcy OpenStreetMap, licencja ODbL) i od użytkowników aplikacji. Podkład mapy: OpenFreeMap i OpenMapTiles.
+
+Aplikacja jest niezależnym projektem i nie jest związana z żadnym urzędem, gminą ani zarządcą wybiegów. Dane prezentujemy w dobrej wierze, ale nie gwarantujemy ich kompletności ani aktualności. Na miejscu obowiązuje regulamin wybiegu. Godziny otwarcia gabinetów mogą być nieaktualne — w nagłym wypadku zadzwoń przed wyjazdem.
+
+Błąd, brakujący wybieg albo pomysł na nową funkcję: office@admin-stack.com
