@@ -1,5 +1,5 @@
 {
-  "osm_base": "2026-10-09T20:21:04Z",
+  "osm_base": "2026-10-11T20:21:06Z",
   "count": 664,
   "parks": [
     {"id":"node/10066975935","name":null,"lat":50.396439,"lon":18.624831,"locality":"Pyskowice","district":null,"region":"śląskie","areaM2":null,"fenced":null,"lit":null,"water":null,"agility":null,"smallDogArea":null,"benches":null,"bins":null,"surface":null,"openingHours":null,"operator":null,"website":null,"description":null,"note":null,"customersOnly":false,"confirmed":true,"source":"osm"},
