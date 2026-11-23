@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-16T14:42:00",
-  "osm_base": "2026-11-15T21:22:28Z",
+  "generated_at": "2026-11-23T16:51:43",
+  "osm_base": "2026-11-22T21:20:48Z",
   "count": 675,
   "failures": [],
   "parks": [
@@ -522,7 +522,7 @@
     {"id":"way/992077541","name":null,"lat":53.374506,"lon":14.623164,"locality":"Szczecin","district":"Prawobrzeże","region":"zachodniopomorskie","areaM2":1590,"fenced":null,"lit":null,"water":null,"agility":null,"smallDogArea":null,"benches":null,"bins":null,"surface":null,"openingHours":null,"operator":null,"website":null,"description":null,"note":null,"customersOnly":false,"confirmed":true,"source":"osm"},
     {"id":"way/360560032","name":"Park dla psów przy os. Zachód","lat":53.715644,"lon":16.663883,"locality":"Szczecinek","district":null,"region":"zachodniopomorskie","areaM2":14231,"fenced":null,"lit":null,"water":null,"agility":null,"smallDogArea":null,"benches":null,"bins":null,"surface":null,"openingHours":null,"operator":null,"website":null,"description":null,"note":null,"customersOnly":false,"confirmed":true,"source":"osm"},
     {"id":"way/1520785039","name":null,"lat":53.264793,"lon":16.458451,"locality":"Wałcz","district":null,"region":"zachodniopomorskie","areaM2":1328,"fenced":true,"lit":null,"water":null,"agility":null,"smallDogArea":null,"benches":null,"bins":null,"surface":null,"openingHours":null,"operator":null,"website":null,"description":null,"note":null,"customersOnly":false,"confirmed":true,"source":"osm"},
-    {"id":"way/1290624217","name":null,"lat":53.915222,"lon":14.255253,"locality":"Świnoujście","district":null,"region":"zachodniopomorskie","areaM2":2587,"fenced":true,"lit":null,"water":null,"agility":null,"smallDogArea":null,"benches":null,"bins":null,"surface":null,"openingHours":null,"operator":null,"website":null,"description":null,"note":null,"customersOnly":false,"confirmed":true,"source":"osm"},
+    {"id":"way/1290624217","name":null,"lat":53.915197,"lon":14.255265,"locality":"Świnoujście","district":null,"region":"zachodniopomorskie","areaM2":3017,"fenced":true,"lit":null,"water":null,"agility":null,"smallDogArea":null,"benches":null,"bins":null,"surface":null,"openingHours":null,"operator":null,"website":null,"description":null,"note":null,"customersOnly":false,"confirmed":true,"source":"osm"},
     {"id":"way/1435548826","name":null,"lat":53.894263,"lon":14.231481,"locality":"Świnoujście","district":null,"region":"zachodniopomorskie","areaM2":3025,"fenced":null,"lit":null,"water":null,"agility":null,"smallDogArea":null,"benches":null,"bins":null,"surface":null,"openingHours":null,"operator":null,"website":null,"description":null,"note":null,"customersOnly":false,"confirmed":true,"source":"osm"},
     {"id":"way/1435548843","name":null,"lat":53.894476,"lon":14.232172,"locality":"Świnoujście","district":null,"region":"zachodniopomorskie","areaM2":1054,"fenced":true,"lit":null,"water":null,"agility":null,"smallDogArea":null,"benches":null,"bins":null,"surface":null,"openingHours":null,"operator":null,"website":null,"description":null,"note":null,"customersOnly":false,"confirmed":true,"source":"osm"},
     {"id":"way/362193623","name":"Kynologické cvičiště","lat":49.736073,"lon":18.608681,"locality":null,"district":null,"region":null,"areaM2":8993,"fenced":null,"lit":null,"water":null,"agility":null,"smallDogArea":null,"benches":null,"bins":null,"surface":null,"openingHours":null,"operator":null,"website":"http://www.zko450.wbs.cz/","description":null,"note":null,"customersOnly":false,"confirmed":true,"source":"osm"},
